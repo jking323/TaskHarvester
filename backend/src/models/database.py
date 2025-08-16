@@ -1,0 +1,49 @@
+"""
+Database configuration and initialization
+"""
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+
+from .action_item import Base
+from ..utils.config import get_settings
+
+settings = get_settings()
+
+# Database URL
+DATABASE_URL = settings.database_url or "sqlite:///./action_items.db"
+
+# Create engine
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
+)
+
+# Create session factory
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+async def init_db():
+    """Initialize database tables"""
+    Base.metadata.create_all(bind=engine)
+    print("✅ Database initialized")
+
+
+def get_db() -> Session:
+    """Get database session"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# Database dependency for FastAPI
+async def get_database():
+    """Async database dependency"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

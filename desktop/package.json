@@ -1,0 +1,65 @@
+{
+  "name": "action-item-extractor",
+  "version": "1.0.0",
+  "description": "Intelligent action item extraction from Outlook and Teams",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "pack": "electron-builder --dir",
+    "test": "jest",
+    "lint": "eslint src --ext .js,.jsx,.ts,.tsx"
+  },
+  "keywords": [
+    "electron",
+    "outlook",
+    "teams",
+    "wrike",
+    "ai",
+    "productivity"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4",
+    "@types/node": "^20.8.0",
+    "typescript": "^5.2.0",
+    "eslint": "^8.52.0",
+    "jest": "^29.7.0"
+  },
+  "dependencies": {
+    "axios": "^1.5.0",
+    "electron-store": "^8.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.16.0",
+    "@mui/material": "^5.14.0",
+    "@mui/icons-material": "^5.14.0",
+    "@emotion/react": "^11.11.0",
+    "@emotion/styled": "^11.11.0",
+    "date-fns": "^2.30.0"
+  },
+  "build": {
+    "appId": "com.actionitemextractor.app",
+    "productName": "Action Item Extractor",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "public/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
