@@ -1,0 +1,43 @@
+# TaskHarvester Code Owners
+# These owners will be automatically requested for review when PRs modify these files
+
+# Global owners for the entire repository
+* @jking323
+
+# Backend/API specific
+/backend/ @jking323
+/backend/src/api/ @jking323
+/backend/src/models/ @jking323
+/backend/src/services/ @jking323
+
+# AI and processing specific
+/backend/src/services/ai_processor.py @jking323
+/ai-models/ @jking323
+
+# Frontend/Desktop application
+/desktop/ @jking323
+/desktop/src/components/ @jking323
+/desktop/src/pages/ @jking323
+
+# Integration specific
+/backend/src/api/outlook.py @jking323
+/backend/src/api/teams.py @jking323
+/backend/src/api/wrike.py @jking323
+/backend/src/services/wrike_integration.py @jking323
+
+# Configuration and infrastructure
+/config/ @jking323
+/.github/ @jking323
+/scripts/ @jking323
+/setup.sh @jking323
+/setup.ps1 @jking323
+
+# Documentation
+/docs/ @jking323
+/README.md @jking323
+/ROADMAP.md @jking323
+
+# Dependencies and package management
+/backend/requirements.txt @jking323
+/desktop/package.json @jking323
+/desktop/package-lock.json @jking323

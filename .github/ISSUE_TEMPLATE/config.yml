@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/jking323/TaskHarvester/wiki
+    about: Check our documentation for setup guides and FAQ
+  - name: Discussions
+    url: https://github.com/jking323/TaskHarvester/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: Roadmap
+    url: https://github.com/jking323/TaskHarvester/blob/main/ROADMAP.md
+    about: View our development roadmap and planned features

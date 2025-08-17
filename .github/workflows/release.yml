@@ -1,0 +1,127 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: TaskHarvester ${{ github.ref }}
+        body: |
+          ## What's New in ${{ github.ref }}
+          
+          <!-- Add release notes here -->
+          
+          ## Installation
+          
+          Download the appropriate installer for your platform below.
+          
+          ## System Requirements
+          - Windows 10/11, macOS 11+, or Ubuntu 20.04+
+          - Intel i7 12th gen (or equivalent)
+          - NVIDIA RTX 4000 series (20GB VRAM recommended)
+          - 32GB System RAM
+          - 50GB available storage
+          
+          For detailed installation instructions, see our [documentation](https://github.com/jking323/TaskHarvester/wiki).
+        draft: false
+        prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
+
+  build-and-upload:
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+        cache-dependency-path: desktop/package-lock.json
+
+    - name: Install dependencies
+      run: |
+        cd desktop
+        npm ci
+
+    - name: Build and package (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd desktop
+        npm run build
+        npm run package:linux
+
+    - name: Build and package (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        cd desktop
+        npm run build
+        npm run package:windows
+
+    - name: Build and package (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd desktop
+        npm run build
+        npm run package:mac
+
+    - name: Upload Linux Release Asset
+      if: matrix.os == 'ubuntu-latest'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./desktop/dist/TaskHarvester-linux-x64.AppImage
+        asset_name: TaskHarvester-${{ github.ref_name }}-linux-x64.AppImage
+        asset_content_type: application/octet-stream
+
+    - name: Upload Windows Release Asset
+      if: matrix.os == 'windows-latest'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./desktop/dist/TaskHarvester-win32-x64-setup.exe
+        asset_name: TaskHarvester-${{ github.ref_name }}-windows-x64.exe
+        asset_content_type: application/octet-stream
+
+    - name: Upload macOS Release Asset
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./desktop/dist/TaskHarvester-darwin-x64.dmg
+        asset_name: TaskHarvester-${{ github.ref_name }}-macos-x64.dmg
+        asset_content_type: application/octet-stream
+
+  notify:
+    needs: [create-release, build-and-upload]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Notify team
+      run: |
+        echo "Release ${{ github.ref }} has been created and assets uploaded successfully!"
+        # Add additional notification logic here (Slack, Discord, etc.)
