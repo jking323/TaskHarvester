@@ -6,7 +6,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
-from .action_item import Base
+# Create base class for models
+Base = declarative_base()
 from ..utils.config import get_settings
 
 settings = get_settings()
@@ -26,6 +27,9 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 async def init_db():
     """Initialize database tables"""
+    # Import all models to ensure they're registered with Base
+    from . import auth_tokens
+    
     Base.metadata.create_all(bind=engine)
     print("✅ Database initialized")
 
@@ -47,3 +51,7 @@ async def get_database():
         yield db
     finally:
         db.close()
+
+def get_db_session():
+    """Get database session (sync version for compatibility)"""
+    return SessionLocal()

@@ -1,0 +1,130 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run integration tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    services:
+      # Add services for integration testing if needed
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: taskharvester_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+        cache-dependency-path: desktop/package-lock.json
+
+    - name: Install Python dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio
+
+    - name: Install Node.js dependencies
+      run: |
+        cd desktop
+        npm ci
+
+    - name: Start backend server
+      run: |
+        cd backend
+        python -m uvicorn src.main:app --host 0.0.0.0 --port 8000 &
+        sleep 10
+      env:
+        DATABASE_URL: sqlite:///./test.db
+        ENVIRONMENT: test
+
+    - name: Run backend health check
+      run: |
+        curl -f http://localhost:8000/health || exit 1
+
+    - name: Run integration tests
+      run: |
+        cd backend
+        pytest tests/integration/ -v
+      env:
+        API_BASE_URL: http://localhost:8000
+        DATABASE_URL: sqlite:///./test.db
+        ENVIRONMENT: test
+
+    - name: Run E2E tests (if desktop app supports headless mode)
+      run: |
+        cd desktop
+        npm run test:e2e
+      env:
+        API_BASE_URL: http://localhost:8000
+      continue-on-error: true
+
+  api-compatibility:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+
+    - name: Install dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Generate OpenAPI spec
+      run: |
+        cd backend
+        python -c "
+        from src.main import app
+        import json
+        with open('openapi.json', 'w') as f:
+            json.dump(app.openapi(), f, indent=2)
+        "
+
+    - name: Upload OpenAPI spec
+      uses: actions/upload-artifact@v3
+      with:
+        name: openapi-spec
+        path: backend/openapi.json
+
+    - name: Validate API documentation
+      run: |
+        cd backend
+        python -c "
+        import json
+        with open('openapi.json', 'r') as f:
+            spec = json.load(f)
+        assert 'openapi' in spec
+        assert 'paths' in spec
+        assert len(spec['paths']) > 0
+        print('API documentation is valid')
+        "

@@ -1,0 +1,133 @@
+name: Enhancement
+description: Suggest an improvement to an existing feature
+title: "[ENHANCEMENT] "
+labels: ["type:enhancement"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an enhancement! Please help us understand how we can improve existing functionality.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm you have completed the following
+      options:
+        - label: I have searched existing issues to avoid duplicates
+          required: true
+        - label: I have tested the current functionality
+          required: true
+        - label: This enhancement builds upon existing features
+          required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component needs enhancement?
+      options:
+        - Backend API
+        - Desktop Application UI/UX
+        - AI Processing Accuracy
+        - Microsoft Graph Integration
+        - Wrike Integration
+        - Authentication Flow
+        - Performance
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: Current Behavior
+      description: Describe how the existing feature currently works
+      placeholder: Currently, when I...
+    validations:
+      required: true
+
+  - type: textarea
+    id: enhancement-description
+    attributes:
+      label: Enhancement Description
+      description: Describe the improvement you'd like to see
+      placeholder: I would like to improve...
+    validations:
+      required: true
+
+  - type: textarea
+    id: benefits
+    attributes:
+      label: Benefits
+      description: What benefits would this enhancement provide?
+      placeholder: |
+        - Improved user experience because...
+        - Better performance by...
+        - Reduced errors through...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-changes
+    attributes:
+      label: Proposed Changes
+      description: Specific changes you'd like to see implemented
+      placeholder: |
+        1. Modify the existing...
+        2. Add new option to...
+        3. Improve the algorithm by...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact Level
+      description: How significant would this enhancement be?
+      options:
+        - Major - Fundamental improvement to core functionality
+        - Moderate - Noticeable improvement to user experience
+        - Minor - Small but helpful improvement
+        - Cosmetic - Visual or aesthetic improvement
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-scenarios
+    attributes:
+      label: User Scenarios
+      description: Describe specific scenarios where this enhancement would be helpful
+      placeholder: |
+        Scenario 1: When processing emails with...
+        Scenario 2: During the setup process...
+        Scenario 3: While reviewing action items...
+
+  - type: textarea
+    id: backward-compatibility
+    attributes:
+      label: Backward Compatibility
+      description: Are there any concerns about maintaining compatibility with existing functionality?
+
+  - type: checkboxes
+    id: related-areas
+    attributes:
+      label: Related Areas
+      description: Which areas might be affected by this enhancement?
+      options:
+        - label: User Interface
+        - label: API Endpoints
+        - label: Database Schema
+        - label: AI Model Performance
+        - label: Integration APIs
+        - label: Configuration
+        - label: Documentation
+        - label: Testing
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context, examples, or research about the enhancement
