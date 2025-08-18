@@ -11,28 +11,31 @@ requests==2.31.0
 # Wrike Integration
 httpx==0.25.2
 
-# AI/ML Stack
-torch==2.1.0+cu121
-transformers==4.35.0
+# AI/ML Stack (Simplified - we're using Ollama, not local transformers)
 ollama==0.1.7
-spacy>=3.7.0
-sentence-transformers==2.2.2
+# Optional: Only install if doing local ML processing
+# torch>=2.2.0  # Use CPU version or specify CUDA version separately
+# transformers==4.35.0
+# spacy>=3.7.0
+# sentence-transformers==2.2.2
 
 # Database
 sqlalchemy==2.0.23
 alembic==1.12.1
 
-# Background Processing
-celery==5.3.4
-redis==5.0.1
+# Background Processing (Simplified for demo)
+# celery==5.3.4
+# redis==5.0.1
 apscheduler==3.10.4
 
 # Utilities
 pydantic==2.4.2
+pydantic-settings==2.0.3
 python-dotenv==1.0.0
 cryptography==41.0.7
 beautifulsoup4==4.12.2
 python-dateutil==2.8.2
+aiofiles==23.2.1
 
 # Development
 pytest==7.4.3

@@ -8,6 +8,7 @@ import httpx
 
 from ..models.auth_tokens import AuthToken, TokenProvider
 from ..models.database import get_db_session
+from ..models.action_items import ActionItem as ActionItemModel, ProcessingLog
 from .ai_processor_simple import AIProcessor, ActionItem
 
 
@@ -92,11 +93,11 @@ class EmailProcessor:
             response = await self._make_graph_request("/me/messages", access_token, params)
             emails = response.get("value", [])
             
-            print(f"📧 Retrieved {len(emails)} emails from the last {days_back} days")
+            print(f"[EMAIL] Retrieved {len(emails)} emails from the last {days_back} days")
             return emails
             
         except Exception as e:
-            print(f"❌ Error fetching emails: {str(e)}")
+            print(f"[ERROR] Error fetching emails: {str(e)}")
             raise
     
     async def get_email_content(self, email_id: str, db_session) -> Optional[str]:
@@ -135,7 +136,7 @@ class EmailProcessor:
                 return content.strip()
                 
         except Exception as e:
-            print(f"❌ Error getting email content for {email_id}: {str(e)}")
+            print(f"[ERROR] Error getting email content for {email_id}: {str(e)}")
             return None
     
     async def process_emails_for_action_items(
@@ -160,7 +161,7 @@ class EmailProcessor:
         if not self.ai_processor or not self.ai_processor.is_initialized:
             raise Exception("AI processor not available")
         
-        print(f"🔍 Processing emails for action items (last {days_back} days, max {max_emails})")
+        print(f"[PROCESS] Processing emails for action items (last {days_back} days, max {max_emails})")
         
         # Fetch recent emails
         emails = await self.get_recent_emails(
@@ -183,11 +184,65 @@ class EmailProcessor:
                     continue
                 
                 # Extract action items using AI
+                start_time = datetime.utcnow()
                 action_items = await self.ai_processor.extract_action_items(
                     content=email_content,
                     source_type="email",
                     source_id=email_id
                 )
+                processing_duration = (datetime.utcnow() - start_time).total_seconds()
+                
+                # Save action items to database
+                saved_action_items = []
+                for item in action_items:
+                    # Parse email date
+                    source_date = None
+                    if email.get("receivedDateTime"):
+                        try:
+                            source_date = datetime.fromisoformat(email["receivedDateTime"].replace("Z", "+00:00"))
+                        except:
+                            pass
+                    
+                    # Create database record
+                    db_item = ActionItemModel.create_from_ai_result(
+                        task=item.task,
+                        assignee=item.assignee,
+                        deadline=item.deadline,
+                        priority=item.priority,
+                        confidence=item.confidence,
+                        context=item.context,
+                        source_type="email",
+                        source_id=email_id,
+                        source_subject=email.get("subject"),
+                        source_sender=email.get("from", {}).get("emailAddress", {}).get("address"),
+                        source_date=source_date,
+                        user_id=None,  # Will be set when we have user authentication
+                        tenant_id=None
+                    )
+                    
+                    db_session.add(db_item)
+                    saved_action_items.append(db_item)
+                
+                # Create processing log
+                processing_log = ProcessingLog(
+                    source_type="email",
+                    source_id=email_id,
+                    source_subject=email.get("subject"),
+                    processing_duration=processing_duration,
+                    action_items_found=len(action_items),
+                    high_confidence_items=len([item for item in action_items if item.confidence >= 0.7]),
+                    ai_model_used=self.ai_processor.model_name,
+                    confidence_threshold=self.ai_processor.confidence_threshold,
+                    success=True
+                )
+                db_session.add(processing_log)
+                
+                try:
+                    db_session.commit()
+                    print(f"[SUCCESS] Saved {len(action_items)} action items from email: {email.get('subject', 'No subject')}")
+                except Exception as db_error:
+                    db_session.rollback()
+                    print(f"[ERROR] Failed to save action items to database: {db_error}")
                 
                 # Prepare result
                 email_result = {
@@ -216,14 +271,14 @@ class EmailProcessor:
                 processed_count += 1
                 
                 if len(action_items) > 0:
-                    print(f"📋 Found {len(action_items)} action items in email: {email['subject'][:50]}...")
+                    print(f"[FOUND] Found {len(action_items)} action items in email: {email['subject'][:50]}...")
                 
             except Exception as e:
-                print(f"❌ Error processing email {email.get('subject', 'Unknown')}: {str(e)}")
+                print(f"[ERROR] Error processing email {email.get('subject', 'Unknown')}: {str(e)}")
                 continue
         
         total_action_items = sum(r["action_item_count"] for r in results)
-        print(f"✅ Processed {processed_count} emails, found {total_action_items} total action items")
+        print(f"[SUCCESS] Processed {processed_count} emails, found {total_action_items} total action items")
         
         return results
     
@@ -248,7 +303,7 @@ class EmailProcessor:
             ]
             
         except Exception as e:
-            print(f"❌ Error fetching email folders: {str(e)}")
+            print(f"[ERROR] Error fetching email folders: {str(e)}")
             raise
     
     async def mark_email_as_read(self, email_id: str, db_session) -> bool:
@@ -274,5 +329,5 @@ class EmailProcessor:
                 return response.status_code == 200
                 
         except Exception as e:
-            print(f"❌ Error marking email as read: {str(e)}")
+            print(f"[ERROR] Error marking email as read: {str(e)}")
             return False
