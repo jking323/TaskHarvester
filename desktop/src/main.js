@@ -75,8 +75,8 @@ class ActionItemExtractorApp {
       title: 'Action Item Extractor'
     });
 
-    // Load the FastAPI backend web interface
-    this.mainWindow.loadURL('http://localhost:8000');
+    // Load the React frontend from webpack dev server
+    this.mainWindow.loadURL('http://localhost:3001');
     
     // Open dev tools in development
     const isDev = process.env.NODE_ENV === 'development';
@@ -146,62 +146,86 @@ class ActionItemExtractorApp {
   async handleOAuthCallback(url, oauthWindow, resolve, reject) {
     console.log('OAuth URL navigation:', url);
     
-    // Check if this is our callback URL
-    if (url.startsWith('http://localhost:8000/api/auth/microsoft/callback')) {
+    // Check if this is our callback URL (handle both localhost and 127.0.0.1)
+    if (url.startsWith('http://localhost:8000/api/auth/microsoft/callback') || 
+        url.startsWith('http://127.0.0.1:8000/api/auth/microsoft/callback')) {
       try {
-        // Parse the callback URL
-        const urlObj = new URL(url);
-        const code = urlObj.searchParams.get('code');
-        const state = urlObj.searchParams.get('state');
-        const error = urlObj.searchParams.get('error');
-
-        if (error) {
-          oauthWindow.close();
-          reject(new Error(`OAuth error: ${urlObj.searchParams.get('error_description') || error}`));
-          return;
-        }
-
-        if (code && state) {
-          // Complete OAuth flow automatically
-          const storedState = store.get('oauthState');
-          const codeVerifier = store.get('oauthCodeVerifier');
-          
-          if (state !== storedState) {
-            oauthWindow.close();
-            reject(new Error('Invalid OAuth state'));
-            return;
-          }
-
+        // Wait a moment for the page to load and then extract the response
+        setTimeout(async () => {
           try {
-            // Make the token exchange request
-            const response = await this.makeApiRequest('POST', '/auth/microsoft/callback', {
-              code,
-              state,
-              code_verifier: codeVerifier
-            });
+            // Get the page content (which should be the JSON response)
+            const content = await oauthWindow.webContents.executeJavaScript('document.body.innerText');
+            console.log('Callback page content:', content);
+            
+            // Try to parse as JSON
+            let callbackData;
+            try {
+              callbackData = JSON.parse(content);
+            } catch (jsonError) {
+              // If not JSON, try to parse URL parameters
+              const urlObj = new URL(url);
+              callbackData = {
+                code: urlObj.searchParams.get('code'),
+                state: urlObj.searchParams.get('state'),
+                error: urlObj.searchParams.get('error')
+              };
+            }
 
-            // Clean up stored OAuth data
-            store.delete('oauthState');
-            store.delete('oauthCodeVerifier');
+            if (callbackData.error) {
+              oauthWindow.close();
+              reject(new Error(`OAuth error: ${callbackData.error_description || callbackData.error}`));
+              return;
+            }
 
-            // Close OAuth window
+            if (callbackData.code && callbackData.state) {
+              // Complete OAuth flow automatically
+              const storedState = store.get('oauthState');
+              const codeVerifier = store.get('oauthCodeVerifier');
+              
+              if (callbackData.state !== storedState) {
+                oauthWindow.close();
+                reject(new Error('Invalid OAuth state'));
+                return;
+              }
+
+              try {
+                // Make the token exchange request
+                const response = await this.makeApiRequest('POST', '/auth/microsoft/callback', {
+                  code: callbackData.code,
+                  state: callbackData.state,
+                  code_verifier: codeVerifier
+                });
+
+                // Clean up stored OAuth data
+                store.delete('oauthState');
+                store.delete('oauthCodeVerifier');
+
+                // Close OAuth window
+                oauthWindow.close();
+
+                // Show success notification
+                this.showNotification('Authentication Success', 'Successfully connected to Microsoft!');
+
+                // Refresh the main window to show updated auth status
+                this.mainWindow.webContents.send('oauth-completed', response);
+
+                resolve(response);
+              } catch (tokenError) {
+                console.error('Token exchange error:', tokenError);
+                oauthWindow.close();
+                reject(tokenError);
+              }
+            } else {
+              oauthWindow.close();
+              reject(new Error('Missing authorization code or state in callback response'));
+            }
+          } catch (extractError) {
+            console.error('Error extracting callback data:', extractError);
             oauthWindow.close();
-
-            // Show success notification
-            this.showNotification('Authentication Success', 'Successfully connected to Microsoft!');
-
-            // Refresh the main window to show updated auth status
-            this.mainWindow.webContents.send('oauth-completed', response);
-
-            resolve(response);
-          } catch (tokenError) {
-            oauthWindow.close();
-            reject(tokenError);
+            reject(extractError);
           }
-        } else {
-          oauthWindow.close();
-          reject(new Error('Missing authorization code or state'));
-        }
+        }, 1000); // Wait 1 second for page to load
+
       } catch (parseError) {
         console.error('Error parsing OAuth callback:', parseError);
         oauthWindow.close();
@@ -325,20 +349,21 @@ class ActionItemExtractorApp {
 
   async makeApiRequest(method, endpoint, data = null) {
     const http = require('http');
-    const baseURL = 'http://localhost:8000/api';
+    const baseURL = 'http://127.0.0.1:8000/api'; // Use explicit IPv4 address
     
     return new Promise((resolve, reject) => {
       const url = new URL(`${baseURL}${endpoint}`);
       
       const options = {
-        hostname: url.hostname,
-        port: url.port,
+        hostname: '127.0.0.1', // Force IPv4 hostname
+        port: 8000,
         path: url.pathname + url.search,
         method: method,
         headers: {
           'Content-Type': 'application/json'
         },
-        timeout: 30000
+        timeout: 30000,
+        family: 4 // Force IPv4
       };
 
       const req = http.request(options, (res) => {
