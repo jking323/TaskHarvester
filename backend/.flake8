@@ -1,0 +1,33 @@
+[flake8]
+max-line-length = 88
+extend-ignore = 
+    # Allow longer lines to match Black's default
+    E501,
+    # Allow trailing whitespace and blank line issues (focus on logic)
+    W291, W292, W293,
+    # Allow unused imports (often needed for future development)
+    F401,
+    # Allow comparison to True/False (sometimes more readable)
+    E712,
+    # Allow multiple imports on one line
+    E401,
+    # Allow bare except clauses (sometimes necessary)
+    E722,
+    # Allow missing blank lines
+    E302, E305,
+    # Allow module level import not at top
+    E402,
+    # Allow assigned but unused variables (temporary development)
+    F841
+per-file-ignores =
+    # Allow additional flexibility in __init__.py files
+    __init__.py:F401,F403
+exclude = 
+    .git,
+    __pycache__,
+    .pytest_cache,
+    .venv,
+    venv,
+    build,
+    dist,
+    *.egg-info
