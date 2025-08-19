@@ -75,6 +75,7 @@ jobs:
     - name: Run Black (code formatting check)
       run: |
         cd backend
+        black src/
         black --check src/
         
     - name: Run Flake8 (linting)
