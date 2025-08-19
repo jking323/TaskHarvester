@@ -104,6 +104,11 @@ async def root():
     """Serve the main login/dashboard page"""
     return FileResponse('static/index.html')
 
+@app.get("/dashboard")
+async def dashboard():
+    """Serve the dashboard page"""
+    return FileResponse('static/dashboard.html')
+
 @app.get("/health")
 async def simple_health():
     """Simple health check endpoint"""

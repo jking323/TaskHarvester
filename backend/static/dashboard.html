@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskHarvester - Dashboard</title>
+    <style>
+        /* TaskHarvester Design System - Dashboard */
+        :root {
+            /* Primary Colors */
+            --color-primary: #5865F2;
+            --color-primary-hover: #4752C4;
+            --color-primary-light: #7289DA;
+            --color-primary-dark: #3C45A5;
+            
+            /* Accent Colors */
+            --color-accent: #3BA55C;
+            --color-accent-hover: #2D8049;
+            --color-warning: #FAA61A;
+            --color-danger: #ED4245;
+            --color-info: #00B0F4;
+            
+            /* Dark Theme Colors */
+            --color-bg-primary: #1E1F22;
+            --color-bg-secondary: #2B2D31;
+            --color-bg-tertiary: #313338;
+            --color-bg-elevated: #313338;
+            
+            --color-text-primary: #F2F3F5;
+            --color-text-secondary: #B5BAC1;
+            --color-text-tertiary: #949BA4;
+            --color-text-muted: #6D7178;
+            --color-text-link: #00B0F4;
+            
+            --color-border: #3F4147;
+            --color-border-light: #35373C;
+            --color-border-dark: #1E1F22;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.4);
+            --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.5);
+            
+            /* Typography */
+            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            
+            /* Spacing */
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 12px;
+            --spacing-lg: 16px;
+            --spacing-xl: 24px;
+            --spacing-2xl: 32px;
+            --spacing-3xl: 48px;
+            
+            /* Border Radius */
+            --radius-sm: 4px;
+            --radius-md: 6px;
+            --radius-lg: 8px;
+            --radius-xl: 12px;
+            
+            /* Transitions */
+            --transition-fast: 150ms ease;
+            --transition-base: 250ms ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            font-size: 14px;
+            color: var(--color-text-primary);
+            background: var(--color-bg-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-2xl);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-2xl);
+            padding-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--color-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            background: var(--color-bg-elevated);
+            padding: var(--spacing-sm) var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--color-border);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .stat-card {
+            background: var(--color-bg-elevated);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--color-border);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--color-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .stat-label {
+            color: var(--color-text-secondary);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .content-section {
+            background: var(--color-bg-elevated);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--color-border);
+            padding: var(--spacing-2xl);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .task-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-sm);
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--color-border);
+        }
+
+        .task-content {
+            flex: 1;
+        }
+
+        .task-description {
+            color: var(--color-text-primary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .task-meta {
+            color: var(--color-text-secondary);
+            font-size: 12px;
+        }
+
+        .confidence-badge {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .confidence-high {
+            background: rgba(59, 165, 92, 0.2);
+            color: var(--color-accent);
+            border: 1px solid var(--color-accent);
+        }
+
+        .confidence-medium {
+            background: rgba(250, 166, 26, 0.2);
+            color: var(--color-warning);
+            border: 1px solid var(--color-warning);
+        }
+
+        .confidence-low {
+            background: rgba(237, 66, 69, 0.2);
+            color: var(--color-danger);
+            border: 1px solid var(--color-danger);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-3xl);
+            color: var(--color-text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .btn {
+            padding: var(--spacing-sm) var(--spacing-lg);
+            border-radius: var(--radius-md);
+            border: none;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .btn-primary {
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--color-primary-hover);
+        }
+
+        .btn-secondary {
+            background: var(--color-bg-secondary);
+            color: var(--color-text-secondary);
+            border: 1px solid var(--color-border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--color-bg-tertiary);
+            color: var(--color-text-primary);
+        }
+
+        .spinner {
+            border: 2px solid var(--color-border);
+            border-top: 2px solid var(--color-primary);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">📋 TaskHarvester</div>
+            <div class="user-info">
+                <span id="userEmail">Loading...</span>
+                <a href="/" class="btn btn-secondary">Logout</a>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalTasks">-</div>
+                <div class="stat-label">Total Tasks</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pendingTasks">-</div>
+                <div class="stat-label">Pending Tasks</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="completedTasks">-</div>
+                <div class="stat-label">Completed Tasks</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="highConfidenceTasks">-</div>
+                <div class="stat-label">High Confidence</div>
+            </div>
+        </div>
+
+        <div class="content-section">
+            <div class="section-title">Recent Action Items</div>
+            <div id="tasksList">
+                <div class="empty-state">
+                    <div class="spinner"></div>
+                    <p>Loading action items...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-section">
+            <div class="section-title">Quick Actions</div>
+            <div style="display: flex; gap: var(--spacing-md);">
+                <a href="/api/auth/status" class="btn btn-primary">Check Auth Status</a>
+                <a href="/docs" class="btn btn-secondary">API Documentation</a>
+                <a href="/api/action-items/" class="btn btn-secondary">Raw API</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authData = {};
+        let tasksData = [];
+
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                // Load auth status
+                const authResponse = await fetch('/api/auth/status');
+                authData = await authResponse.json();
+                
+                if (authData.microsoft_authenticated && authData.microsoft_user) {
+                    document.getElementById('userEmail').textContent = 
+                        authData.microsoft_user.mail || authData.microsoft_user.userPrincipalName || 'User';
+                } else {
+                    // Redirect to login if not authenticated
+                    window.location.href = '/';
+                    return;
+                }
+
+                // Load action items
+                const tasksResponse = await fetch('/api/action-items/');
+                const tasksResult = await tasksResponse.json();
+                tasksData = tasksResult.items || [];
+
+                // Update stats
+                updateStats();
+                renderTasks();
+
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+                document.getElementById('tasksList').innerHTML = 
+                    '<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>Failed to load data</p></div>';
+            }
+        }
+
+        function updateStats() {
+            const total = tasksData.length;
+            const pending = tasksData.filter(task => task.status === 'pending').length;
+            const completed = tasksData.filter(task => task.status === 'completed').length;
+            const highConfidence = tasksData.filter(task => task.confidence >= 0.8).length;
+
+            document.getElementById('totalTasks').textContent = total;
+            document.getElementById('pendingTasks').textContent = pending;
+            document.getElementById('completedTasks').textContent = completed;
+            document.getElementById('highConfidenceTasks').textContent = highConfidence;
+        }
+
+        function renderTasks() {
+            const tasksList = document.getElementById('tasksList');
+            
+            if (tasksData.length === 0) {
+                tasksList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <h3>No action items yet</h3>
+                        <p>Connect your email and calendar to start extracting action items automatically.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const tasksHtml = tasksData.slice(0, 10).map(task => {
+                const confidenceClass = task.confidence >= 0.8 ? 'confidence-high' : 
+                                      task.confidence >= 0.5 ? 'confidence-medium' : 'confidence-low';
+                const confidenceLabel = task.confidence >= 0.8 ? 'High' : 
+                                      task.confidence >= 0.5 ? 'Medium' : 'Low';
+
+                return `
+                    <div class="task-item">
+                        <div class="task-content">
+                            <div class="task-description">${task.task}</div>
+                            <div class="task-meta">
+                                ${task.source_type || 'Unknown source'} • 
+                                ${task.assignee || 'Unassigned'} • 
+                                ${new Date(task.created_at).toLocaleDateString()}
+                            </div>
+                        </div>
+                        <div class="confidence-badge ${confidenceClass}">
+                            ${confidenceLabel} (${Math.round(task.confidence * 100)}%)
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            tasksList.innerHTML = tasksHtml;
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', loadDashboard);
+    </script>
+</body>
+</html>

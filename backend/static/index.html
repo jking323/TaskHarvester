@@ -445,7 +445,7 @@
                 
                 // Redirect to main app if already authenticated
                 setTimeout(() => {
-                    window.location.href = '/api/action-items/';
+                    window.location.href = '/dashboard';
                 }, 1000);
             } else {
                 statusDiv.className = 'auth-status not-authenticated';
@@ -594,7 +594,7 @@
                 
                 // Redirect to main app after successful authentication
                 setTimeout(() => {
-                    window.location.href = '/api/action-items/';
+                    window.location.href = '/dashboard';
                 }, 1500); // Give user time to see success message
             });
         }
