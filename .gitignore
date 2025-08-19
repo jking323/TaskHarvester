@@ -1,0 +1,245 @@
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# Node.js Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Build Outputs
+dist/
+build/
+out/
+*.tgz
+*.tar.gz
+
+# Frontend Specific
+desktop/dist/
+desktop/build/
+desktop/node_modules/
+desktop/.cache/
+desktop/coverage/
+desktop/.nyc_output/
+
+# Python Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# Python Cache and Compiled Files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Backend Specific
+backend/__pycache__/
+backend/venv/
+backend/.pytest_cache/
+backend/htmlcov/
+backend/.coverage
+backend/coverage.xml
+backend/*.log
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+action_items.db*
+test_*.db
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Doppler CLI
+.doppler*
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime Data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage Directory
+coverage/
+.nyc_output/
+
+# ESLint Cache
+.eslintcache
+
+# Microbundle Cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional npm Cache
+.npm
+
+# Optional ESLint Cache
+.eslintcache
+
+# Optional REPL History
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity File
+.yarn-integrity
+
+# parcel-bundler Cache
+.cache
+.parcel-cache
+
+# Next.js Build Output
+.next
+
+# Nuxt.js Build / Generate Output
+.nuxt
+dist
+
+# Storybook Build Outputs
+.out
+.storybook-out
+
+# Temporary Folders
+tmp/
+temp/
+
+# Editor Directories and Files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Electron Specific
+desktop/app/
+desktop/release/
+desktop/dist_electron/
+
+# Webpack
+desktop/.cache/
+desktop/public/hot/
+
+# Testing
+desktop/coverage/
+backend/htmlcov/
+backend/.coverage
+backend/.pytest_cache/
+.nyc_output/
+
+# Temporary Files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Security Files
+*.pem
+*.key
+*.crt
+*.p12
+secrets/
+private/
+
+# AI Model Files (too large for git)
+models/
+*.ggml
+*.bin
+ollama_models/
+
+# Backup Files
+*.backup
+*.bak
+*.orig
+
+# Archive Files
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+
+# Documentation Build
+docs/_build/
+docs/dist/
+
+# Lighthouse Reports
+lighthouse-reports/
+
+# Performance Monitoring
+.clinic/
+0x/
+
+# Package Managers
+.pnpm-store/
+.yarn/
+!.yarn/patches/
+!.yarn/plugins/
+!.yarn/releases/
+!.yarn/sdks/
+!.yarn/versions/
+
+# Local Environment
+.env.local
+.env.*.local
+
+# Editor Config (keep)
+!.editorconfig
+
+# Git Config (keep)
+!.gitkeep
+
+# Claude AI Assistant Files
+.claude/

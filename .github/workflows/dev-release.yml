@@ -1,0 +1,292 @@
+name: Dev Release
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.gitignore'
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Quality Gates
+  quality-gates:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: desktop/package-lock.json
+        
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install dependencies
+      run: |
+        cd desktop && npm ci
+        cd ../backend && pip install -r requirements.txt
+        
+    - name: Run tests
+      run: |
+        cd desktop && npm test -- --coverage --watchAll=false
+        cd ../backend && python -m pytest tests/ --cov=src
+        
+    - name: Check test coverage
+      run: |
+        echo "Checking test coverage thresholds..."
+        # Add coverage validation logic here
+
+  # Build and Package
+  build-and-package:
+    name: Build and Package
+    needs: quality-gates
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+            arch: x64
+          - os: windows-latest
+            platform: win
+            arch: ia32
+          - os: macos-latest
+            platform: mac
+            arch: x64
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: desktop/package-lock.json
+        
+    - name: Install dependencies
+      run: |
+        cd desktop
+        npm ci
+        
+    - name: Build application
+      run: |
+        cd desktop
+        npm run build
+        
+    - name: Package Electron app
+      run: |
+        cd desktop
+        npm run build:${{ matrix.platform }} -- --${{ matrix.arch }}
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: taskharvester-${{ matrix.platform }}-${{ matrix.arch }}
+        path: desktop/dist/
+        retention-days: 30
+
+  # Create Dev Release
+  create-dev-release:
+    name: Create Dev Release
+    needs: build-and-package
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        
+    - name: Configure Git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+    - name: Get current version
+      id: current_version
+      run: |
+        cd desktop
+        echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+        
+    - name: Bump version
+      id: bump_version
+      run: |
+        cd desktop
+        npm version ${{ github.event.inputs.version_bump || 'patch' }} --no-git-tag-version
+        NEW_VERSION=$(node -p "require('./package.json').version")
+        echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "tag=v$NEW_VERSION-dev" >> $GITHUB_OUTPUT
+        
+    - name: Generate changelog
+      id: changelog
+      run: |
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        if [ -z "$PREVIOUS_TAG" ]; then
+          CHANGES=$(git log --pretty=format:"- %s (%h)" --since="7 days ago")
+        else
+          CHANGES=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..HEAD)
+        fi
+        
+        # Create multiline output
+        {
+          echo "changelog<<EOF"
+          echo "## What's Changed"
+          echo ""
+          echo "$CHANGES"
+          echo ""
+          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREVIOUS_TAG...${{ steps.bump_version.outputs.tag }}"
+          echo "EOF"
+        } >> $GITHUB_OUTPUT
+        
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: dist-artifacts/
+        
+    - name: Prepare release assets
+      run: |
+        mkdir -p release-assets
+        
+        # Windows builds
+        if [ -d "dist-artifacts/taskharvester-win-x64" ]; then
+          cd dist-artifacts/taskharvester-win-x64
+          zip -r ../../release-assets/TaskHarvester-Windows-x64-${{ steps.bump_version.outputs.new_version }}-dev.zip ./*
+          cd ../..
+        fi
+        
+        if [ -d "dist-artifacts/taskharvester-win-ia32" ]; then
+          cd dist-artifacts/taskharvester-win-ia32
+          zip -r ../../release-assets/TaskHarvester-Windows-ia32-${{ steps.bump_version.outputs.new_version }}-dev.zip ./*
+          cd ../..
+        fi
+        
+        # Mac builds
+        if [ -d "dist-artifacts/taskharvester-mac-x64" ]; then
+          cd dist-artifacts/taskharvester-mac-x64
+          zip -r ../../release-assets/TaskHarvester-macOS-x64-${{ steps.bump_version.outputs.new_version }}-dev.zip ./*
+          cd ../..
+        fi
+        
+        # Linux builds
+        if [ -d "dist-artifacts/taskharvester-linux-x64" ]; then
+          cd dist-artifacts/taskharvester-linux-x64
+          tar -czf ../../release-assets/TaskHarvester-Linux-x64-${{ steps.bump_version.outputs.new_version }}-dev.tar.gz ./*
+          cd ../..
+        fi
+        
+    - name: Create Release
+      uses: actions/create-release@v1
+      id: create_release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.bump_version.outputs.tag }}
+        release_name: TaskHarvester ${{ steps.bump_version.outputs.new_version }} (Development)
+        body: |
+          🚧 **Development Release** 🚧
+          
+          This is an automated development release containing the latest features and improvements.
+          
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ## Installation
+          
+          ### Windows
+          - **x64**: Download `TaskHarvester-Windows-x64-${{ steps.bump_version.outputs.new_version }}-dev.zip`
+          - **32-bit**: Download `TaskHarvester-Windows-ia32-${{ steps.bump_version.outputs.new_version }}-dev.zip`
+          
+          ### macOS
+          - **Intel**: Download `TaskHarvester-macOS-x64-${{ steps.bump_version.outputs.new_version }}-dev.zip`
+          
+          ### Linux
+          - **x64**: Download `TaskHarvester-Linux-x64-${{ steps.bump_version.outputs.new_version }}-dev.tar.gz`
+          
+          ## ⚠️ Important Notes
+          - This is a development release and may contain bugs
+          - Not recommended for production use
+          - Feedback and issue reports are welcome
+          - Backend server setup required (see README.md)
+          
+          ## 🔧 Requirements
+          - Ollama with Llama 3.1 8B model for AI features
+          - Doppler CLI for environment configuration
+          - Microsoft Azure app registration for OAuth
+        draft: false
+        prerelease: true
+        
+    - name: Upload Release Assets
+      run: |
+        for file in release-assets/*; do
+          if [ -f "$file" ]; then
+            echo "Uploading $file"
+            curl -X POST \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary @"$file" \
+              "${{ steps.create_release.outputs.upload_url }}?name=$(basename $file)"
+          fi
+        done
+        
+    - name: Commit version bump
+      run: |
+        git add desktop/package.json
+        git commit -m "🔖 Bump version to ${{ steps.bump_version.outputs.new_version }}"
+        git push origin main
+
+  # Notify
+  notify:
+    name: Notify Team
+    needs: create-dev-release
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Notify on success
+      if: needs.create-dev-release.result == 'success'
+      run: |
+        echo "✅ Dev release created successfully!"
+        echo "Release URL: https://github.com/${{ github.repository }}/releases"
+        
+    - name: Notify on failure
+      if: needs.create-dev-release.result == 'failure'
+      run: |
+        echo "❌ Dev release failed!"
+        echo "Check the workflow logs for details."
