@@ -73,7 +73,7 @@ class ActionItemExtractorApp {
       this.mainWindow.loadURL('http://localhost:3000');
       this.mainWindow.webContents.openDevTools();
     } else {
-      this.mainWindow.loadFile(path.join(__dirname, '../build/index.html'));
+      this.mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
     }
 
     // Handle window events
@@ -103,28 +103,37 @@ class ActionItemExtractorApp {
   }
 
   createSystemTray() {
-    // Create system tray
-    const trayIconPath = path.join(__dirname, '../public/tray-icon.png');
-    this.tray = new Tray(trayIconPath);
+    try {
+      // Create system tray
+      const trayIconPath = path.join(__dirname, '../public/tray-icon.png');
+      this.tray = new Tray(trayIconPath);
+      
+      this.updateTrayMenu();
+    } catch (error) {
+      console.log('System tray not available or icon missing:', error.message);
+      // Continue without tray
+    }
     
-    this.updateTrayMenu();
-    
-    // Handle tray click
-    this.tray.on('click', () => {
-      if (this.mainWindow.isVisible()) {
-        this.mainWindow.hide();
-      } else {
-        this.showMainWindow();
-      }
-    });
+    if (this.tray) {
+      // Handle tray click
+      this.tray.on('click', () => {
+        if (this.mainWindow.isVisible()) {
+          this.mainWindow.hide();
+        } else {
+          this.showMainWindow();
+        }
+      });
 
-    // Handle tray double-click
-    this.tray.on('double-click', () => {
-      this.showMainWindow();
-    });
+      // Handle tray double-click
+      this.tray.on('double-click', () => {
+        this.showMainWindow();
+      });
+    }
   }
 
   updateTrayMenu() {
+    if (!this.tray) return;
+    
     const contextMenu = Menu.buildFromTemplate([
       {
         label: 'Open Dashboard',
