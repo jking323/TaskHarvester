@@ -4,7 +4,7 @@ import Titlebar from './Titlebar';
 import '../styles/design-system.css';
 import '../styles/components.css';
 
-const Layout = ({ children, currentPage, onNavigate }) => {
+const Layout = ({ children, currentPage, onNavigate, isAuthenticated, backendStatus }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [theme, setTheme] = useState('dark');
 
@@ -31,6 +31,8 @@ const Layout = ({ children, currentPage, onNavigate }) => {
       <Titlebar 
         onToggleTheme={toggleTheme} 
         currentTheme={theme}
+        isAuthenticated={isAuthenticated}
+        backendStatus={backendStatus}
       />
       
       <Sidebar 
@@ -38,6 +40,8 @@ const Layout = ({ children, currentPage, onNavigate }) => {
         onToggle={toggleSidebar}
         currentPage={currentPage}
         onNavigate={onNavigate}
+        isAuthenticated={isAuthenticated}
+        backendStatus={backendStatus}
       />
       
       <main className={`main-content ${sidebarCollapsed ? 'expanded' : ''}`}>

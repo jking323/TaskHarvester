@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Titlebar = ({ onToggleTheme, currentTheme }) => {
+const Titlebar = ({ onToggleTheme, currentTheme, isAuthenticated, backendStatus }) => {
   const minimizeWindow = () => {
     if (window.electronAPI) {
       window.electronAPI.minimizeWindow();
@@ -26,6 +26,45 @@ const Titlebar = ({ onToggleTheme, currentTheme }) => {
           <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
         </svg>
         TaskHarvester
+        
+        {/* Connection Status Indicators */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '16px' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '4px',
+            fontSize: '11px',
+            color: backendStatus === 'connected' ? '#4CAF50' : '#f44336'
+          }}>
+            <span style={{ 
+              width: '6px', 
+              height: '6px', 
+              borderRadius: '50%', 
+              background: backendStatus === 'connected' ? '#4CAF50' : '#f44336',
+              display: 'inline-block'
+            }}></span>
+            Backend
+          </div>
+          
+          {backendStatus === 'connected' && (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '4px',
+              fontSize: '11px',
+              color: isAuthenticated ? '#4CAF50' : '#ffc107'
+            }}>
+              <span style={{ 
+                width: '6px', 
+                height: '6px', 
+                borderRadius: '50%', 
+                background: isAuthenticated ? '#4CAF50' : '#ffc107',
+                display: 'inline-block'
+              }}></span>
+              {isAuthenticated ? 'Auth' : 'No Auth'}
+            </div>
+          )}
+        </div>
       </div>
       
       <div className="titlebar-center">
