@@ -22,8 +22,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Backend API communication
   apiRequest: (method, endpoint, data) => ipcRenderer.invoke('api-request', method, endpoint, data),
   
+  // OAuth authentication
+  startOAuth: () => ipcRenderer.invoke('start-oauth'),
+  completeOAuth: (code, state) => ipcRenderer.invoke('complete-oauth', code, state),
+  
   // Navigation
   onNavigate: (callback) => ipcRenderer.on('navigate-to', callback),
+  
+  // OAuth completion event
+  onOAuthCompleted: (callback) => ipcRenderer.on('oauth-completed', callback),
   
   // Processing events
   onProcessingToggle: (callback) => ipcRenderer.on('processing-toggle', callback),

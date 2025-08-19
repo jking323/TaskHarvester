@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskHarvester - AI-Powered Action Item Extractor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 480px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #4f46e5;
+            margin-bottom: 0.5rem;
+        }
+
+        .tagline {
+            color: #6b7280;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .auth-status {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+        }
+
+        .auth-status.loading {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .auth-status.authenticated {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .auth-status.not-authenticated {
+            background: #fef2f2;
+            color: #991b1b;
+        }
+
+        .login-button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 0.5rem;
+            min-width: 200px;
+        }
+
+        .login-button:hover {
+            background: #4338ca;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        .login-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .logout-button {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 0.5rem;
+        }
+
+        .logout-button:hover {
+            background: #b91c1c;
+        }
+
+        .user-info {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: left;
+        }
+
+        .user-info h3 {
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .user-info p {
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .features {
+            text-align: left;
+            margin-top: 2rem;
+        }
+
+        .features h3 {
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .features li {
+            padding: 0.5rem 0;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+        }
+
+        .features li:before {
+            content: "✓";
+            color: #10b981;
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+
+        .spinner {
+            border: 2px solid #f3f4f6;
+            border-top: 2px solid #4f46e5;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fef2f2;
+            color: #991b1b;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .api-links {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .api-links a {
+            color: #4f46e5;
+            text-decoration: none;
+            margin: 0 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .api-links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">📋 TaskHarvester</div>
+        <div class="tagline">AI-Powered Action Item Extractor</div>
+        
+        <div id="authStatus" class="auth-status loading">
+            <div class="spinner"></div>
+            Checking authentication status...
+        </div>
+
+        <div id="errorMessage" style="display: none;"></div>
+        <div id="successMessage" style="display: none;"></div>
+
+        <div id="userInfo" style="display: none;"></div>
+
+        <div id="authButtons">
+            <button id="microsoftLogin" class="login-button" onclick="loginMicrosoft()" disabled>
+                <div class="spinner"></div>
+                Connecting to Microsoft...
+            </button>
+            <br>
+            <button id="microsoftLogout" class="logout-button" onclick="logoutMicrosoft()" style="display: none;">
+                Disconnect Microsoft
+            </button>
+        </div>
+
+        <!-- OAuth completion form is no longer needed - handled seamlessly by Electron -->
+
+        <div class="features">
+            <h3>Features</h3>
+            <ul>
+                <li>Extract action items from emails automatically</li>
+                <li>Process calendar events for tasks</li>
+                <li>AI-powered content analysis</li>
+                <li>Microsoft Graph integration</li>
+                <li>Wrike task management sync</li>
+                <li>Secure OAuth authentication</li>
+            </ul>
+        </div>
+
+        <div class="api-links">
+            <a href="/docs" target="_blank">API Documentation</a>
+            <a href="/api/auth/status" target="_blank">Auth Status</a>
+            <a href="/api/v1/action-items/" target="_blank">Action Items</a>
+        </div>
+    </div>
+
+    <script>
+        let authData = {};
+
+        // Check authentication status on page load
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('/api/auth/status');
+                authData = await response.json();
+                updateUI();
+            } catch (error) {
+                showError('Failed to check authentication status');
+                console.error('Auth status error:', error);
+            }
+        }
+
+        function updateUI() {
+            const statusDiv = document.getElementById('authStatus');
+            const userInfoDiv = document.getElementById('userInfo');
+            const microsoftLogin = document.getElementById('microsoftLogin');
+            const microsoftLogout = document.getElementById('microsoftLogout');
+
+            // Update Microsoft auth status
+            if (authData.microsoft_authenticated) {
+                statusDiv.className = 'auth-status authenticated';
+                statusDiv.innerHTML = '✅ Microsoft authenticated - Redirecting to app...';
+                microsoftLogin.style.display = 'none';
+                microsoftLogout.style.display = 'inline-block';
+                
+                // Redirect to main app if already authenticated
+                setTimeout(() => {
+                    window.location.href = '/api/action-items/';
+                }, 1000);
+            } else {
+                statusDiv.className = 'auth-status not-authenticated';
+                statusDiv.innerHTML = '❌ Not authenticated with Microsoft';
+                microsoftLogin.style.display = 'inline-block';
+                microsoftLogin.innerHTML = 'Connect Microsoft';
+                microsoftLogin.disabled = false;
+                microsoftLogout.style.display = 'none';
+                userInfoDiv.style.display = 'none';
+            }
+        }
+
+        async function loginMicrosoft() {
+            const button = document.getElementById('microsoftLogin');
+            button.disabled = true;
+            button.innerHTML = '<div class="spinner"></div>Starting OAuth flow...';
+
+            try {
+                // Check if running in Electron
+                if (window.electronAPI) {
+                    // Use Electron seamless OAuth flow
+                    const result = await window.electronAPI.startOAuth();
+                    // OAuth completion is handled automatically by Electron
+                    // The UI will be updated via the oauth-completed event
+                } else {
+                    // Use web browser OAuth flow
+                    const response = await fetch('/api/auth/microsoft/login');
+                    const data = await response.json();
+                    
+                    if (data.auth_url) {
+                        // Store state and code_verifier for callback
+                        sessionStorage.setItem('oauth_state', data.state);
+                        sessionStorage.setItem('oauth_code_verifier', data.code_verifier);
+                        
+                        // Redirect to Microsoft OAuth
+                        window.location.href = data.auth_url;
+                    } else {
+                        throw new Error('No auth URL received');
+                    }
+                }
+            } catch (error) {
+                showError('Failed to start Microsoft OAuth flow: ' + error.message);
+                console.error('Microsoft login error:', error);
+                button.disabled = false;
+                button.innerHTML = 'Connect Microsoft';
+            }
+        }
+
+        // OAuth completion functions removed - now handled seamlessly by Electron
+
+        async function logoutMicrosoft() {
+            try {
+                await fetch('/api/auth/microsoft/logout', { method: 'DELETE' });
+                showSuccess('Microsoft account disconnected');
+                await checkAuthStatus();
+            } catch (error) {
+                showError('Failed to disconnect Microsoft account');
+                console.error('Microsoft logout error:', error);
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.className = 'error';
+            errorDiv.innerHTML = message;
+            errorDiv.style.display = 'block';
+            
+            // Hide success message
+            document.getElementById('successMessage').style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.className = 'success';
+            successDiv.innerHTML = message;
+            successDiv.style.display = 'block';
+            
+            // Hide error message
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        // Handle OAuth callback
+        function handleCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const error = urlParams.get('error');
+
+            if (error) {
+                showError(`OAuth error: ${urlParams.get('error_description') || error}`);
+                return;
+            }
+
+            if (code && state) {
+                const storedState = sessionStorage.getItem('oauth_state');
+                const codeVerifier = sessionStorage.getItem('oauth_code_verifier');
+
+                if (state === storedState && codeVerifier) {
+                    // Complete OAuth flow
+                    completeOAuthFlow(code, state, codeVerifier);
+                } else {
+                    showError('Invalid OAuth state. Please try again.');
+                }
+
+                // Clean up session storage
+                sessionStorage.removeItem('oauth_state');
+                sessionStorage.removeItem('oauth_code_verifier');
+                
+                // Clean up URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+
+        async function completeOAuthFlow(code, state, codeVerifier) {
+            try {
+                const response = await fetch('/api/auth/microsoft/callback', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        state: state,
+                        code_verifier: codeVerifier
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showSuccess('Successfully authenticated with Microsoft!');
+                    await checkAuthStatus();
+                } else {
+                    throw new Error(data.detail || 'Authentication failed');
+                }
+            } catch (error) {
+                showError('Failed to complete authentication: ' + error.message);
+                console.error('OAuth completion error:', error);
+            }
+        }
+
+        // Handle OAuth completion from Electron
+        if (window.electronAPI) {
+            window.electronAPI.onOAuthCompleted((event, result) => {
+                showSuccess('Successfully authenticated with Microsoft!');
+                
+                // Redirect to main app after successful authentication
+                setTimeout(() => {
+                    window.location.href = '/api/action-items/';
+                }, 1500); // Give user time to see success message
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            handleCallback();
+            checkAuthStatus();
+        });
+    </script>
+</body>
+</html>

@@ -12,12 +12,11 @@
 
 ### 2. Configure Authentication
 1. In your app registration, go to **Authentication**
-2. Under **Platform configurations**, click **Add a platform** > **Web**
+2. Under **Platform configurations**, click **Add a platform** > **Mobile and desktop applications**
 3. Add redirect URI: `http://localhost:8000/api/auth/microsoft/callback`
 4. Under **Advanced settings**:
-   - ✅ Enable **Access tokens**
-   - ✅ Enable **ID tokens**
-   - ✅ Enable **Allow public client flows**
+   - ✅ Enable **Allow public client flows** (CRITICAL - This must be enabled!)
+   - Leave **Access tokens** and **ID tokens** as default
 
 ### 3. Set API Permissions
 1. Go to **API permissions** > **Add a permission** > **Microsoft Graph** > **Delegated permissions**
@@ -29,11 +28,11 @@
    - `offline_access` - Maintain access to data
 3. Click **Grant admin consent for [Your Tenant]**
 
-### 4. Create Client Secret
-1. Go to **Certificates & secrets** > **Client secrets** > **New client secret**
-2. Add description: "TaskHarvester Backend Secret"
-3. Set expiration: 24 months (or your preference)
-4. **Copy the secret value immediately** - you won't be able to see it again!
+### 4. Client Secret - NOT NEEDED for Public Clients
+**IMPORTANT**: For desktop/mobile applications using PublicClientApplication, do NOT create a client secret.
+If you previously created one, you can leave it but it won't be used.
+
+Public client applications use PKCE (Proof Key for Code Exchange) for security instead of client secrets.
 
 ### 5. Configure Doppler Secrets
 Set these environment variables in Doppler:
@@ -41,7 +40,7 @@ Set these environment variables in Doppler:
 ```bash
 # Required OAuth Configuration
 MICROSOFT_CLIENT_ID=your-application-client-id-here
-MICROSOFT_CLIENT_SECRET=your-client-secret-here
+# MICROSOFT_CLIENT_SECRET is NOT needed for public client applications
 MICROSOFT_TENANT_ID=common  # Use 'common' for multi-tenant support
 MICROSOFT_REDIRECT_URI=http://localhost:8000/api/auth/microsoft/callback
 
@@ -71,6 +70,15 @@ The app should now work with:
 
 ### 7. Common Issues & Solutions
 
+#### "AADSTS700025: Client is public so neither 'client_assertion' nor 'client_secret' should be presented"
+- **Problem**: App registration platform is set to "Web" instead of "Mobile and desktop applications"
+- **Solution**: 
+  1. Go to **Authentication** in Azure AD
+  2. Remove the "Web" platform configuration
+  3. Add "Mobile and desktop applications" platform
+  4. Set redirect URI: `http://localhost:8000/api/auth/microsoft/callback`
+  5. Ensure **"Allow public client flows"** is enabled
+
 #### "User account does not exist in tenant"
 - **Problem**: App is configured for single-tenant only
 - **Solution**: Change **Supported account types** to "Multitenant and personal accounts"
@@ -82,10 +90,6 @@ The app should now work with:
 #### "AADSTS65001: User or administrator has not consented"
 - **Problem**: Permissions not granted
 - **Solution**: Grant admin consent for permissions in Azure AD
-
-#### "Invalid client secret"
-- **Problem**: Client secret expired or incorrect
-- **Solution**: Generate new client secret and update Doppler
 
 ### 8. Production Considerations
 For production deployment:

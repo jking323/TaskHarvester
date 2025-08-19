@@ -56,7 +56,8 @@ class MSGraphAuth:
     def __init__(self):
         self.settings = get_settings()
         self.client_id = self.settings.microsoft_client_id
-        self.client_secret = self.settings.microsoft_client_secret
+        # For PublicClientApplication, we don't use client_secret
+        # self.client_secret = self.settings.microsoft_client_secret
         self.tenant_id = self.settings.microsoft_tenant_id or "common"  # Support multi-tenant
         self.redirect_uri = self.settings.microsoft_redirect_uri
         
@@ -81,9 +82,9 @@ class MSGraphAuth:
         else:
             self.authority = f"https://login.microsoftonline.com/{self.tenant_id}"
             
-        self.app = msal.ConfidentialClientApplication(
+        # Use PublicClientApplication for Electron/desktop apps
+        self.app = msal.PublicClientApplication(
             client_id=self.client_id,
-            client_credential=self.client_secret,
             authority=self.authority
         )
     
@@ -140,8 +141,8 @@ class MSGraphAuth:
         
         return auth_url, state, code_verifier
     
-    async def exchange_code_for_token(self, code: str, state: str, code_verifier: str) -> Dict[str, Any]:
-        """Exchange authorization code for access token with PKCE validation"""
+    async def exchange_code_for_token(self, code: str, state: str, code_verifier: str = None) -> Dict[str, Any]:
+        """Exchange authorization code for access token"""
         # Validate state parameter
         state_data = self._validate_and_get_oauth_state(state)
         if not state_data:
@@ -150,22 +151,14 @@ class MSGraphAuth:
                 detail="Invalid or expired state parameter"
             )
         
-        # Validate code verifier
-        if state_data["code_verifier"] != code_verifier:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid code verifier"
-            )
-        
         # Clean up used state
         _oauth_states.pop(state, None)
         
-        # Exchange code for token
+        # Exchange code for token (MSAL handles PKCE internally)
         result = self.app.acquire_token_by_authorization_code(
             code=code,
             scopes=state_data["scopes"],
-            redirect_uri=self.redirect_uri,
-            code_verifier=code_verifier
+            redirect_uri=self.redirect_uri
         )
         
         if "error" in result:
@@ -387,6 +380,35 @@ async def auth_status(db_session = Depends(get_db_session)):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to check auth status: {str(e)}")
+
+@router.get("/microsoft/admin-consent")
+async def microsoft_admin_consent():
+    """Generate admin consent URL for Microsoft Graph permissions"""
+    try:
+        if not ms_auth:
+            raise HTTPException(status_code=500, detail="Microsoft Graph authentication not configured")
+        
+        # Build admin consent URL
+        params = {
+            "client_id": ms_auth.client_id,
+            "response_type": "code",
+            "redirect_uri": ms_auth.redirect_uri,
+            "scope": " ".join(ms_auth.scopes),
+            "response_mode": "query",
+            "prompt": "admin_consent"
+        }
+        
+        admin_consent_url = f"{ms_auth.authority}/adminconsent?" + "&".join([f"{k}={v}" for k, v in params.items()])
+        
+        return {
+            "admin_consent_url": admin_consent_url,
+            "instructions": "Admin must visit this URL to grant consent for the application",
+            "required_scopes": ms_auth.scopes,
+            "tenant_id": ms_auth.tenant_id
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate admin consent URL: {str(e)}")
 
 @router.get("/microsoft/login", response_model=AuthUrlResponse)
 async def microsoft_login(scopes: Optional[str] = None):

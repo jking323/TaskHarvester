@@ -85,9 +85,9 @@ class Settings(BaseSettings):
     
     def is_microsoft_configured(self) -> bool:
         """Check if Microsoft Graph authentication is properly configured"""
+        # For PublicClientApplication, we only need client_id and redirect_uri
         return bool(
             self.microsoft_client_id and 
-            self.microsoft_client_secret and 
             self.microsoft_redirect_uri
         )
     
