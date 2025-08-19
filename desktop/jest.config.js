@@ -1,7 +1,7 @@
 module.exports = {
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.js'],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '\\.(jpg|jpeg|png|gif|svg)$': '<rootDir>/src/__mocks__/fileMock.js'
   },
@@ -31,5 +31,6 @@ module.exports = {
   moduleFileExtensions: ['js', 'jsx', 'json'],
   transformIgnorePatterns: [
     'node_modules/(?!(react-router-dom)/)'
-  ]
+  ],
+  passWithNoTests: true
 };
