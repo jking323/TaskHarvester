@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .api import auth, ai_test, email_processing  # OAuth testing, AI testing, and email processing
+from .api import auth, ai_test, email_processing, action_items, wrike  # OAuth, AI, email, action items, and Wrike
 from .models.database import init_db
 from .utils.config import get_settings
 from .services.ai_processor_simple import AIProcessor
@@ -24,46 +24,46 @@ from .services.email_processor import EmailProcessor
 async def lifespan(app: FastAPI):
     """Application lifespan management"""
     # Startup
-    print("🚀 Starting TaskHarvester...")
+    print("Starting TaskHarvester...")
     
     # Initialize database
     await init_db()
     
     # Initialize AI processor
-    print("🤖 Initializing AI Processor...")
+    print("Initializing AI Processor...")
     ai_processor = AIProcessor()
     await ai_processor.initialize()
     app.state.ai_processor = ai_processor
     
     if ai_processor.is_initialized:
-        print("✅ AI Processor ready for action item extraction")
+        print("AI Processor ready for action item extraction")
     else:
-        print("⚠️  AI Processor initialization incomplete - some features may be limited")
+        print("WARNING: AI Processor initialization incomplete - some features may be limited")
     
     # Initialize and configure email processor
-    print("📧 Initializing Email Processor...")
+    print("Initializing Email Processor...")
     email_processor = EmailProcessor()
     email_processor.set_ai_processor(ai_processor)
     app.state.email_processor = email_processor
     
     # Set the email processor in the email_processing module
     email_processing.email_processor = email_processor
-    print("✅ Email Processor configured with AI integration")
+    print("Email Processor configured with AI integration")
     
     # TODO: Start background task manager when implemented
     # task_manager = BackgroundTaskManager()
     # await task_manager.start()
     # app.state.task_manager = task_manager
     
-    print("✅ Application startup complete")
+    print("Application startup complete")
     
     yield
     
     # Shutdown
-    print("🛑 Shutting down application...")
+    print("Shutting down application...")
     # if hasattr(app.state, 'task_manager'):
     #     await app.state.task_manager.stop()
-    print("✅ Shutdown complete")
+    print("Shutdown complete")
 
 
 # Create FastAPI app
@@ -87,6 +87,8 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(ai_test.router, prefix="/api/ai", tags=["ai-testing"])
 app.include_router(email_processing.router, prefix="/api/emails", tags=["email-processing"])
+app.include_router(action_items.router, prefix="/api/action-items", tags=["action-items"])
+app.include_router(wrike.router, prefix="/api/wrike", tags=["wrike-integration"])
 
 # TODO: Include other routers when implemented
 # app.include_router(outlook.router, prefix="/api/outlook", tags=["outlook"])

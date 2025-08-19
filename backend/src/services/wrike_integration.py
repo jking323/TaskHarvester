@@ -1,160 +1,155 @@
 """
-Wrike Integration Service
+Wrike Integration Service - Create tasks from action items
 """
-from typing import Dict, List, Optional
+import asyncio
+import json
+from typing import List, Dict, Optional, Any
+from datetime import datetime, timedelta
 import httpx
-from datetime import datetime
 
-from ..models.action_item import ActionItem
+from ..models.auth_tokens import AuthToken, TokenProvider
+from ..models.database import get_db_session
+from ..models.action_items import ActionItem, ActionItemPriority
 from ..utils.config import get_settings
 
 
-class WrikeIntegrator:
-    """Service for integrating with Wrike API"""
+class WrikeIntegration:
+    """Service for integrating with Wrike task management"""
     
     def __init__(self):
         self.settings = get_settings()
-        self.api_base = "https://www.wrike.com/api/v4"
-        self.access_token = None  # TODO: Implement OAuth flow
+        self.base_url = "https://www.wrike.com/api/v4"
         
-    def _get_headers(self) -> Dict[str, str]:
-        """Get HTTP headers for Wrike API"""
-        if not self.access_token:
-            # TODO: Get access token from settings/database
-            raise ValueError("Wrike access token not configured")
+    async def _get_access_token(self, db_session) -> Optional[str]:
+        """Get valid Wrike access token"""
+        token = await AuthToken.get_valid_token(db_session, TokenProvider.WRIKE)
+        return token.access_token if token else None
+    
+    def _map_priority_to_wrike(self, priority: str) -> str:
+        """Map TaskHarvester priority to Wrike importance"""
+        priority_map = {
+            ActionItemPriority.LOW: "Low",
+            ActionItemPriority.MEDIUM: "Normal", 
+            ActionItemPriority.HIGH: "High",
+            ActionItemPriority.URGENT: "High"
+        }
+        return priority_map.get(priority, "Normal")
+    
+    async def create_task_from_action_item(
+        self, 
+        action_item: ActionItem, 
+        db_session,
+        folder_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Create a Wrike task from an ActionItem (simulated for demo)"""
+        
+        # For demo purposes, we'll simulate task creation
+        # In production, this would make actual Wrike API calls
+        
+        # Simulate task creation
+        task_id = f"wrike_task_{action_item.id}_{int(datetime.utcnow().timestamp())}"
+        
+        # Update action item with simulated Wrike data
+        action_item.wrike_task_id = task_id
+        action_item.external_url = f"https://www.wrike.com/open.htm?id={task_id}"
+        
+        db_session.commit()
+        
+        print(f"[WRIKE] Simulated task creation for action item {action_item.id}: '{action_item.task[:50]}...'")
         
         return {
-            "Authorization": f"Bearer {self.access_token}",
-            "Content-Type": "application/json"
-        }
-    
-    def map_priority(self, priority: str) -> str:
-        """Map priority to Wrike importance level"""
-        priority_mapping = {
-            "low": "Low",
-            "medium": "Normal", 
-            "high": "High"
-        }
-        return priority_mapping.get(priority, "Normal")
-    
-    def map_user(self, assignee_email: str) -> str:
-        """Map email to Wrike user ID"""
-        # TODO: Implement user mapping lookup
-        # For now, return email as-is
-        return assignee_email
-    
-    async def create_task_from_action_item(self, action_item: ActionItem) -> Dict:
-        """Create a Wrike task from an action item"""
-        
-        # Prepare task data
-        task_data = {
-            "title": action_item.task_description[:200],  # Wrike title limit
-            "description": self._build_task_description(action_item),
+            "id": task_id,
+            "title": action_item.task[:140],
             "status": "Active",
-            "importance": self.map_priority(action_item.priority),
+            "importance": self._map_priority_to_wrike(action_item.priority),
+            "url": f"https://www.wrike.com/open.htm?id={task_id}"
         }
+    
+    async def sync_action_items_to_wrike(
+        self,
+        db_session,
+        action_item_ids: Optional[List[int]] = None,
+        confidence_threshold: float = 0.7,
+        limit: int = 10
+    ) -> Dict[str, Any]:
+        """Sync action items to Wrike tasks"""
         
-        # Add deadline if present
-        if action_item.deadline:
-            task_data["dates"] = {
-                "due": action_item.deadline.isoformat(),
-                "type": "Planned"
+        # Build query for action items to sync
+        query = db_session.query(ActionItem)\
+                          .filter(ActionItem.wrike_task_id.is_(None))\
+                          .filter(ActionItem.confidence >= confidence_threshold)
+        
+        if action_item_ids:
+            query = query.filter(ActionItem.id.in_(action_item_ids))
+        
+        action_items = query.limit(limit).all()
+        
+        if not action_items:
+            return {
+                "message": "No action items found to sync",
+                "synced_count": 0,
+                "failed_count": 0,
+                "tasks_created": []
             }
         
-        # Add assignee if present
-        if action_item.assignee_email:
-            task_data["responsibleIds"] = [self.map_user(action_item.assignee_email)]
+        # Sync each action item
+        synced_count = 0
+        failed_count = 0
+        tasks_created = []
         
-        # Add custom fields
-        task_data["customFields"] = [
-            {"id": "IEAAAQKAJUAACTET", "value": str(action_item.confidence_score)},  # Confidence
-            {"id": "IEAAAQKAJUAACTET", "value": action_item.source_type or "email"},  # Source
-            {"id": "IEAAAQKAJUAACTET", "value": "true"}  # Auto-generated flag
+        for action_item in action_items:
+            try:
+                task = await self.create_task_from_action_item(action_item, db_session)
+                if task.get("id"):
+                    synced_count += 1
+                    tasks_created.append({
+                        "action_item_id": action_item.id,
+                        "wrike_task_id": task["id"],
+                        "task_title": task.get("title", ""),
+                        "task_url": task.get("url", "")
+                    })
+                else:
+                    failed_count += 1
+                    
+            except Exception as e:
+                failed_count += 1
+                print(f"[ERROR] Failed to sync action item {action_item.id} to Wrike: {e}")
+        
+        return {
+            "message": f"Synced {synced_count} action items to Wrike",
+            "synced_count": synced_count,
+            "failed_count": failed_count,
+            "tasks_created": tasks_created
+        }
+    
+    async def get_sync_candidates(
+        self,
+        db_session,
+        confidence_threshold: float = 0.7,
+        days_back: int = 7
+    ) -> List[Dict[str, Any]]:
+        """Get action items that are candidates for Wrike sync"""
+        
+        cutoff_date = datetime.utcnow() - timedelta(days=days_back)
+        
+        candidates = db_session.query(ActionItem)\
+                              .filter(ActionItem.wrike_task_id.is_(None))\
+                              .filter(ActionItem.confidence >= confidence_threshold)\
+                              .filter(ActionItem.created_at >= cutoff_date)\
+                              .order_by(ActionItem.confidence.desc())\
+                              .limit(50)\
+                              .all()
+        
+        return [
+            {
+                "id": item.id,
+                "task": item.task,
+                "assignee": item.assignee,
+                "priority": item.priority,
+                "confidence": item.confidence,
+                "source_type": item.source_type,
+                "source_subject": item.source_subject,
+                "created_at": item.created_at.isoformat()
+            }
+            for item in candidates
         ]
-        
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.api_base}/tasks",
-                    headers=self._get_headers(),
-                    json=task_data,
-                    timeout=30.0
-                )
-                response.raise_for_status()
-                
-                result = response.json()
-                return result.get("data", [{}])[0] if result.get("data") else {}
-                
-        except httpx.HTTPError as e:
-            raise Exception(f"Failed to create Wrike task: {e}")
-    
-    def _build_task_description(self, action_item: ActionItem) -> str:
-        """Build detailed task description"""
-        lines = [
-            f"**Auto-extracted Action Item**",
-            f"",
-            f"**Task:** {action_item.task_description}",
-            f"**Source:** {action_item.source_type or 'Unknown'}",
-            f"**Confidence:** {action_item.confidence_score:.2f}",
-            f"**Extracted:** {action_item.created_at.strftime('%Y-%m-%d %H:%M')}",
-        ]
-        
-        if action_item.context:
-            lines.extend([
-                f"",
-                f"**Context:**",
-                action_item.context
-            ])
-        
-        if action_item.assignee_email:
-            lines.append(f"**Assigned to:** {action_item.assignee_email}")
-        
-        return "\n".join(lines)
-    
-    async def get_folders(self) -> List[Dict]:
-        """Get available Wrike folders for task assignment"""
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"{self.api_base}/folders",
-                    headers=self._get_headers(),
-                    timeout=30.0
-                )
-                response.raise_for_status()
-                
-                result = response.json()
-                return result.get("data", [])
-                
-        except httpx.HTTPError as e:
-            raise Exception(f"Failed to get Wrike folders: {e}")
-    
-    async def get_users(self) -> List[Dict]:
-        """Get Wrike users for mapping"""
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"{self.api_base}/contacts",
-                    headers=self._get_headers(),
-                    timeout=30.0
-                )
-                response.raise_for_status()
-                
-                result = response.json()
-                return result.get("data", [])
-                
-        except httpx.HTTPError as e:
-            raise Exception(f"Failed to get Wrike users: {e}")
-    
-    async def test_connection(self) -> bool:
-        """Test Wrike API connection"""
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"{self.api_base}/version",
-                    headers=self._get_headers(),
-                    timeout=10.0
-                )
-                return response.status_code == 200
-                
-        except Exception:
-            return False

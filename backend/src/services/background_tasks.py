@@ -22,7 +22,7 @@ class BackgroundTaskManager:
             return
             
         self.is_running = True
-        print("🔄 Starting background task manager...")
+        print("[TASKS] Starting background task manager...")
         
         # Start email processing task
         email_task = asyncio.create_task(self._email_processing_loop())
@@ -32,7 +32,7 @@ class BackgroundTaskManager:
         teams_task = asyncio.create_task(self._teams_processing_loop())
         self.tasks.append(teams_task)
         
-        print("✅ Background tasks started")
+        print("[SUCCESS] Background tasks started")
     
     async def stop(self):
         """Stop background processing"""
@@ -40,7 +40,7 @@ class BackgroundTaskManager:
             return
             
         self.is_running = False
-        print("🛑 Stopping background tasks...")
+        print("[TASKS] Stopping background tasks...")
         
         # Cancel all tasks
         for task in self.tasks:
@@ -50,30 +50,30 @@ class BackgroundTaskManager:
         await asyncio.gather(*self.tasks, return_exceptions=True)
         self.tasks.clear()
         
-        print("✅ Background tasks stopped")
+        print("[SUCCESS] Background tasks stopped")
     
     async def _email_processing_loop(self):
         """Process emails periodically"""
         while self.is_running:
             try:
-                print(f"📧 Processing emails at {datetime.now()}")
+                print(f"[EMAIL] Processing emails at {datetime.now()}")
                 # TODO: Implement email processing
                 await asyncio.sleep(self.settings.email_check_interval)
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                print(f"❌ Email processing error: {e}")
+                print(f"[ERROR] Email processing error: {e}")
                 await asyncio.sleep(60)  # Wait 1 minute on error
     
     async def _teams_processing_loop(self):
         """Process Teams messages periodically"""
         while self.is_running:
             try:
-                print(f"💬 Processing Teams messages at {datetime.now()}")
+                print(f"[TEAMS] Processing Teams messages at {datetime.now()}")
                 # TODO: Implement Teams processing
                 await asyncio.sleep(self.settings.teams_check_interval)
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                print(f"❌ Teams processing error: {e}")
+                print(f"[ERROR] Teams processing error: {e}")
                 await asyncio.sleep(60)  # Wait 1 minute on error

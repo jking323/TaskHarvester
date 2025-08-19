@@ -24,9 +24,9 @@ class CacheManager:
             )
             # Test connection
             self.redis_client.ping()
-            print("✅ Redis cache connected")
+            print("[SUCCESS] Redis cache connected")
         except redis.ConnectionError:
-            print("❌ Redis not available, using memory cache")
+            print("[WARNING] Redis not available, using memory cache")
             self.redis_client = None
             self._memory_cache = {}
     

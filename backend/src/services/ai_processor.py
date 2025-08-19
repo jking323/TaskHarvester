@@ -29,7 +29,7 @@ class AIProcessor:
         
     async def initialize(self):
         """Initialize AI models"""
-        print("🤖 Initializing AI models...")
+        print("[AI] Initializing AI models...")
         
         try:
             # Initialize Ollama client
@@ -39,23 +39,23 @@ class AIProcessor:
             try:
                 self.ollama_client.show('llama3.1:8b')
             except:
-                print("📥 Downloading Llama 3.1 8B model (this may take a while)...")
+                print("[DOWNLOAD] Downloading Llama 3.1 8B model (this may take a while)...")
                 self.ollama_client.pull('llama3.1:8b')
             
             # Load spaCy model for NER
             try:
                 self.nlp = spacy.load("en_core_web_sm")
             except OSError:
-                print("❌ spaCy model not found. Run: python -m spacy download en_core_web_sm")
+                print("[ERROR] spaCy model not found. Run: python -m spacy download en_core_web_sm")
                 raise
             
             # Load sentence transformer for similarity
             self.sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
             
-            print("✅ AI models initialized successfully")
+            print("[SUCCESS] AI models initialized successfully")
             
         except Exception as e:
-            print(f"❌ Failed to initialize AI models: {e}")
+            print(f"[ERROR] Failed to initialize AI models: {e}")
             raise
     
     def _generate_content_hash(self, content: str) -> str:
@@ -177,7 +177,7 @@ class AIProcessor:
             return filtered_items
             
         except Exception as e:
-            print(f"❌ Error in action item extraction: {e}")
+            print(f"[ERROR] Error in action item extraction: {e}")
             return []
     
     def _build_extraction_prompt(self, content: str, source_type: str, entities: Dict) -> str:
@@ -262,7 +262,7 @@ Extract action items:
             return action_items
             
         except (json.JSONDecodeError, KeyError, ValueError) as e:
-            print(f"❌ Error parsing LLM response: {e}")
+            print(f"[ERROR] Error parsing LLM response: {e}")
             return []
     
     def _resolve_assignee_email(self, assignee_name: str) -> Optional[str]:

@@ -36,7 +36,7 @@ class AIProcessor:
         
     async def initialize(self):
         """Initialize the AI processor"""
-        print("🤖 Initializing AI Processor...")
+        print("[AI] Initializing AI Processor...")
         
         try:
             # Initialize Ollama client
@@ -45,25 +45,26 @@ class AIProcessor:
             # Test connection to Ollama
             try:
                 models = self.ollama_client.list()
-                print(f"📋 Available models: {[m.model for m in models.models]}")
+                model_names = [model['name'] for model in models['models']]
+                print(f"[INFO] Available models: {model_names}")
                 
                 # Check if our model is available
-                model_available = any(m.model == self.model_name for m in models.models)
+                model_available = self.model_name in model_names
                 if not model_available:
-                    print(f"⚠️  Model {self.model_name} not found. Available models: {[m.model for m in models.models]}")
-                    print("💡 Make sure you run: ollama pull llama3.1:8b")
+                    print(f"[WARNING] Model {self.model_name} not found. Available models: {model_names}")
+                    print("[INFO] Make sure you run: ollama pull llama3.1:8b")
                     # Don't fail initialization, just warn
                 
                 self.is_initialized = True
-                print("✅ AI Processor initialized successfully")
+                print("[SUCCESS] AI Processor initialized successfully")
                 
             except Exception as e:
-                print(f"⚠️  Could not connect to Ollama: {e}")
-                print("💡 Make sure Ollama is running: ollama serve")
+                print(f"[WARNING] Could not connect to Ollama: {e}")
+                print("[INFO] Make sure Ollama is running: ollama serve")
                 self.is_initialized = False
                 
         except Exception as e:
-            print(f"❌ Failed to initialize AI Processor: {e}")
+            print(f"[ERROR] Failed to initialize AI Processor: {e}")
             self.is_initialized = False
     
     def _build_extraction_prompt(self, content: str, source_type: str = "email") -> str:
@@ -114,7 +115,7 @@ Extract action items (JSON only):"""
         """Extract action items from content using Ollama"""
         
         if not self.is_initialized:
-            print("❌ AI Processor not initialized")
+            print("[ERROR] AI Processor not initialized")
             return []
         
         if not content.strip():
@@ -133,17 +134,17 @@ Extract action items (JSON only):"""
         
         # Skip processing if content seems irrelevant
         if keyword_count == 0 and len(content.split()) > 50:
-            print("⏭️  Skipping content - no action keywords found")
+            print("[SKIP] Skipping content - no action keywords found")
             return []
         
-        print(f"🧠 Processing {source_type} content ({len(content)} chars, {keyword_count} action keywords)...")
+        print(f"[PROCESS] Processing {source_type} content ({len(content)} chars, {keyword_count} action keywords)...")
         
         try:
             # Build prompt
             prompt = self._build_extraction_prompt(content, source_type)
             
             # Call Ollama
-            print("🤖 Calling Ollama for action item extraction...")
+            print("[AI] Calling Ollama for action item extraction...")
             response = self.ollama_client.generate(
                 model=self.model_name,
                 prompt=prompt,
@@ -161,25 +162,25 @@ Extract action items (JSON only):"""
             # Filter by confidence threshold
             filtered_items = [item for item in action_items if item.confidence >= self.confidence_threshold]
             
-            print(f"✅ Extracted {len(filtered_items)} action items (from {len(action_items)} candidates)")
+            print(f"[SUCCESS] Extracted {len(filtered_items)} action items (from {len(action_items)} candidates)")
             
             return filtered_items
             
         except Exception as e:
-            print(f"❌ Error extracting action items: {e}")
+            print(f"[ERROR] Error extracting action items: {e}")
             return []
     
     def _parse_llm_response(self, response: str, source_type: str, source_id: str) -> List[ActionItem]:
         """Parse the LLM response into ActionItem objects"""
         
         try:
-            print(f"📝 Parsing LLM response: {response[:200]}...")
+            print(f"[PARSE] Parsing LLM response: {response[:200]}...")
             
             # Try to extract JSON from response
             # Look for JSON between { and }
-            json_match = re.search(r'\\{.*\\}', response, re.DOTALL)
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
             if not json_match:
-                print("❌ No JSON found in response")
+                print("[ERROR] No JSON found in response")
                 return []
             
             json_str = json_match.group()
@@ -218,7 +219,7 @@ Extract action items (JSON only):"""
             return action_items
             
         except (json.JSONDecodeError, KeyError, ValueError) as e:
-            print(f"❌ Error parsing LLM response: {e}")
+            print(f"[ERROR] Error parsing LLM response: {e}")
             print(f"Response was: {response}")
             return []
     
