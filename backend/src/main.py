@@ -7,7 +7,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from .api import auth, ai_test, email_processing, action_items, wrike  # OAuth, AI, email, action items, and Wrike
 from .models.database import init_db
@@ -100,8 +101,8 @@ app.include_router(wrike.router, prefix="/api/wrike", tags=["wrike-integration"]
 
 @app.get("/")
 async def root():
-    """Root endpoint"""
-    return {"message": "TaskHarvester API", "status": "running", "version": "0.1.0"}
+    """Serve the main login/dashboard page"""
+    return FileResponse('static/index.html')
 
 @app.get("/health")
 async def simple_health():
