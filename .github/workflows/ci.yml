@@ -25,7 +25,9 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
-        cache-dependency-path: desktop/package-lock.json
+        cache-dependency-path: |
+          desktop/package-lock.json
+          desktop/package.json
         
     - name: Install dependencies
       run: |
@@ -126,7 +128,9 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
-        cache-dependency-path: desktop/package-lock.json
+        cache-dependency-path: |
+          desktop/package-lock.json
+          desktop/package.json
         
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -176,7 +180,7 @@ jobs:
         output: 'trivy-results.sarif'
         
     - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'
@@ -200,7 +204,9 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
-        cache-dependency-path: desktop/package-lock.json
+        cache-dependency-path: |
+          desktop/package-lock.json
+          desktop/package.json
         
     - name: Install dependencies
       run: |
