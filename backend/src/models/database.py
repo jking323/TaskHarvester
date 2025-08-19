@@ -28,7 +28,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 async def init_db():
     """Initialize database tables"""
     # Import all models to ensure they're registered with Base
-    from . import auth_tokens
+    from . import auth_tokens, action_item
     
     Base.metadata.create_all(bind=engine)
     print("✅ Database initialized")

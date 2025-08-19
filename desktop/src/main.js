@@ -227,7 +227,7 @@ class ActionItemExtractorApp {
 
   async makeApiRequest(method, endpoint, data = null) {
     const axios = require('axios');
-    const baseURL = 'http://localhost:8000/api';
+    const baseURL = 'http://127.0.0.1:8000/api';
     
     try {
       const config = {

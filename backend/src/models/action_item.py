@@ -7,9 +7,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 from sqlalchemy import Column, Integer, String, Text, DateTime, Float, Boolean, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base()
+from .database import Base
 
 
 class Priority(str, Enum):

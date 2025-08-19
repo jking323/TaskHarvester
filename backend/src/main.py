@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .api import auth, ai_test, email_processing  # OAuth testing, AI testing, and email processing
+from .api import auth, ai_test, email_processing, actions  # OAuth testing, AI testing, and email processing
 from .models.database import init_db
 from .utils.config import get_settings
 from .services.ai_processor_simple import AIProcessor
@@ -92,13 +92,19 @@ app.include_router(email_processing.router, prefix="/api/emails", tags=["email-p
 # app.include_router(outlook.router, prefix="/api/outlook", tags=["outlook"])
 # app.include_router(teams.router, prefix="/api/teams", tags=["teams"])
 # app.include_router(wrike.router, prefix="/api/wrike", tags=["wrike"])
-# app.include_router(actions.router, prefix="/api/actions", tags=["action-items"])
+app.include_router(actions.router, prefix="/api/actions", tags=["action-items"])
+app.include_router(actions.router, prefix="/api/tasks", tags=["tasks"])  # Also mount as /api/tasks for frontend compatibility
 # app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 
 
 @app.get("/")
 async def root():
     """Root endpoint"""
+    return {"message": "TaskHarvester API", "status": "running", "version": "0.1.0"}
+
+@app.get("/api/")
+async def api_root():
+    """API root endpoint"""
     return {"message": "TaskHarvester API", "status": "running", "version": "0.1.0"}
 
 @app.get("/health")
@@ -120,6 +126,19 @@ async def health_check():
         raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
 
+@app.get("/api/dashboard/stats")
+async def dashboard_stats():
+    """Dashboard statistics"""
+    return {
+        "total_action_items": 0,
+        "pending_review": 0,
+        "approved_today": 0,
+        "processing_rate": 0.0,
+        "ai_confidence_avg": 0.85,
+        "last_processed": None
+    }
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """Global exception handler"""
@@ -135,7 +154,7 @@ if __name__ == "__main__":
     settings = get_settings()
     uvicorn.run(
         "src.main:app",
-        host="127.0.0.1",
+        host="0.0.0.0",
         port=8000,
         reload=True,
         log_level="info"
