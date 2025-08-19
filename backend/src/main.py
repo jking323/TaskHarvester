@@ -1,6 +1,7 @@
 """
 Action Item Extractor - Main FastAPI Application
 """
+
 import asyncio
 import os
 from contextlib import asynccontextmanager
@@ -10,7 +11,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .api import auth, ai_test, email_processing, action_items, wrike  # OAuth, AI, email, action items, and Wrike
+from .api import (
+    auth,
+    ai_test,
+    email_processing,
+    action_items,
+    wrike,
+)  # OAuth, AI, email, action items, and Wrike
 from .models.database import init_db
 from .utils.config import get_settings
 from .services.ai_processor_simple import AIProcessor
@@ -26,40 +33,42 @@ async def lifespan(app: FastAPI):
     """Application lifespan management"""
     # Startup
     print("Starting TaskHarvester...")
-    
+
     # Initialize database
     await init_db()
-    
+
     # Initialize AI processor
     print("Initializing AI Processor...")
     ai_processor = AIProcessor()
     await ai_processor.initialize()
     app.state.ai_processor = ai_processor
-    
+
     if ai_processor.is_initialized:
         print("AI Processor ready for action item extraction")
     else:
-        print("WARNING: AI Processor initialization incomplete - some features may be limited")
-    
+        print(
+            "WARNING: AI Processor initialization incomplete - some features may be limited"
+        )
+
     # Initialize and configure email processor
     print("Initializing Email Processor...")
     email_processor = EmailProcessor()
     email_processor.set_ai_processor(ai_processor)
     app.state.email_processor = email_processor
-    
+
     # Set the email processor in the email_processing module
     email_processing.email_processor = email_processor
     print("Email Processor configured with AI integration")
-    
+
     # TODO: Start background task manager when implemented
     # task_manager = BackgroundTaskManager()
     # await task_manager.start()
     # app.state.task_manager = task_manager
-    
+
     print("Application startup complete")
-    
+
     yield
-    
+
     # Shutdown
     print("Shutting down application...")
     # if hasattr(app.state, 'task_manager'):
@@ -72,13 +81,16 @@ app = FastAPI(
     title="Action Item Extractor API",
     description="Intelligent action item extraction from Outlook and Teams",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],  # Electron app and React frontend
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+    ],  # Electron app and React frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -87,8 +99,12 @@ app.add_middleware(
 # Include API routers
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(ai_test.router, prefix="/api/ai", tags=["ai-testing"])
-app.include_router(email_processing.router, prefix="/api/emails", tags=["email-processing"])
-app.include_router(action_items.router, prefix="/api/action-items", tags=["action-items"])
+app.include_router(
+    email_processing.router, prefix="/api/emails", tags=["email-processing"]
+)
+app.include_router(
+    action_items.router, prefix="/api/action-items", tags=["action-items"]
+)
 app.include_router(wrike.router, prefix="/api/wrike", tags=["wrike-integration"])
 
 # TODO: Include other routers when implemented
@@ -102,12 +118,14 @@ app.include_router(wrike.router, prefix="/api/wrike", tags=["wrike-integration"]
 @app.get("/")
 async def root():
     """Serve the main login/dashboard page"""
-    return FileResponse('static/index.html')
+    return FileResponse("static/index.html")
+
 
 @app.get("/dashboard")
 async def dashboard():
     """Serve the dashboard page"""
-    return FileResponse('static/dashboard.html')
+    return FileResponse("static/dashboard.html")
+
 
 @app.get("/health")
 async def simple_health():
@@ -119,11 +137,7 @@ async def simple_health():
 async def health_check():
     """Detailed health check"""
     try:
-        return {
-            "status": "healthy",
-            "oauth_ready": True,
-            "version": "0.1.0-oauth-test"
-        }
+        return {"status": "healthy", "oauth_ready": True, "version": "0.1.0-oauth-test"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
@@ -132,19 +146,14 @@ async def health_check():
 async def global_exception_handler(request, exc):
     """Global exception handler"""
     return JSONResponse(
-        status_code=500,
-        content={"detail": f"Internal server error: {str(exc)}"}
+        status_code=500, content={"detail": f"Internal server error: {str(exc)}"}
     )
 
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     settings = get_settings()
     uvicorn.run(
-        "src.main:app",
-        host="127.0.0.1",
-        port=8000,
-        reload=True,
-        log_level="info"
+        "src.main:app", host="127.0.0.1", port=8000, reload=True, log_level="info"
     )

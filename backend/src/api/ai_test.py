@@ -1,6 +1,7 @@
 """
 AI Testing API Routes - For testing action item extraction
 """
+
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
@@ -16,7 +17,9 @@ ai_processor = None
 
 class TestExtractionRequest(BaseModel):
     content: str = Field(..., description="Content to extract action items from")
-    source_type: str = Field("email", description="Type of source (email, meeting, chat)")
+    source_type: str = Field(
+        "email", description="Type of source (email, meeting, chat)"
+    )
     source_id: str = Field("test", description="Source identifier")
 
 
@@ -52,18 +55,20 @@ async def ai_status():
     try:
         processor = await get_ai_processor()
         test_result = processor.test_connection()
-        
+
         return AIStatusResponse(
             ollama_status=test_result["status"],
             model_status=test_result["message"],
             available_models=test_result.get("available_models", []),
             target_model=test_result["target_model"],
             model_ready=test_result.get("model_ready", False),
-            processor_initialized=processor.is_initialized
+            processor_initialized=processor.is_initialized,
         )
-        
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to check AI status: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to check AI status: {str(e)}"
+        )
 
 
 @router.post("/test-extraction", response_model=TestExtractionResponse)
@@ -71,22 +76,23 @@ async def test_extraction(request: TestExtractionRequest):
     """Test action item extraction with provided content"""
     try:
         processor = await get_ai_processor()
-        
+
         if not processor.is_initialized:
             raise HTTPException(status_code=503, detail="AI processor not initialized")
-        
+
         # Time the extraction
         import time
+
         start_time = time.time()
-        
+
         action_items = await processor.extract_action_items(
             content=request.content,
             source_type=request.source_type,
-            source_id=request.source_id
+            source_id=request.source_id,
         )
-        
+
         processing_time = (time.time() - start_time) * 1000  # Convert to milliseconds
-        
+
         # Convert action items to dict format
         items_dict = [
             {
@@ -96,19 +102,19 @@ async def test_extraction(request: TestExtractionRequest):
                 "priority": item.priority,
                 "confidence": item.confidence,
                 "context": item.context,
-                "source": item.source
+                "source": item.source,
             }
             for item in action_items
         ]
-        
+
         return TestExtractionResponse(
             status="success",
             message=f"Extracted {len(action_items)} action items",
             action_items=items_dict,
             processing_time_ms=processing_time,
-            content_length=len(request.content)
+            content_length=len(request.content),
         )
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
 
@@ -120,7 +126,7 @@ async def test_sample_extraction():
         processor = await get_ai_processor()
         result = await processor.test_extraction()
         return result
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Sample test failed: {str(e)}")
 
@@ -131,12 +137,12 @@ async def list_models():
     try:
         processor = await get_ai_processor()
         test_result = processor.test_connection()
-        
+
         return {
             "status": test_result["status"],
             "available_models": test_result.get("available_models", []),
-            "current_model": test_result["target_model"]
+            "current_model": test_result["target_model"],
         }
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list models: {str(e)}")
