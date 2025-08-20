@@ -1,0 +1,365 @@
+name: Production Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 0.1.0)'
+        required: true
+        type: string
+      release_notes:
+        description: 'Release notes'
+        required: true
+        type: string
+      is_major_release:
+        description: 'Is this a major release?'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '22'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Pre-release Validation
+  pre-release-validation:
+    name: Pre-release Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Validate version format
+      run: |
+        if [[ ! "${{ github.event.inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "❌ Invalid version format. Use semantic versioning (e.g., 0.1.0)"
+          exit 1
+        fi
+        echo "✅ Version format is valid"
+        
+    - name: Check if version exists
+      run: |
+        if git tag | grep -q "^v${{ github.event.inputs.version }}$"; then
+          echo "❌ Version ${{ github.event.inputs.version }} already exists"
+          exit 1
+        fi
+        echo "✅ Version is unique"
+        
+    - name: Validate branch
+      run: |
+        if [ "${{ github.ref_name }}" != "main" ]; then
+          echo "❌ Production releases can only be created from main branch"
+          exit 1
+        fi
+        echo "✅ Release from main branch confirmed"
+
+  # Comprehensive Testing
+  comprehensive-testing:
+    name: Comprehensive Testing
+    needs: pre-release-validation
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: desktop/package-lock.json
+        
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install dependencies
+      run: |
+        cd desktop && npm ci
+        cd ../backend && pip install -r requirements.txt pytest pytest-cov
+        
+    - name: Run full test suite
+      run: |
+        cd desktop
+        npm test -- --coverage --watchAll=false
+        npm run lint
+        
+        cd ../backend
+        python -m pytest tests/ --cov=src --cov-fail-under=80
+        
+    - name: Validate build
+      run: |
+        cd desktop
+        npm run build
+        
+    - name: Security scan
+      if: matrix.os == 'ubuntu-latest'
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        exit-code: '1'
+
+  # Build Production Artifacts
+  build-production:
+    name: Build Production Artifacts
+    needs: comprehensive-testing
+    runs-on: ${{ matrix.config.os }}
+    
+    strategy:
+      matrix:
+        config:
+          - { os: windows-latest, platform: win, arch: x64, ext: exe }
+          - { os: windows-latest, platform: win, arch: ia32, ext: exe }
+          - { os: macos-latest, platform: mac, arch: x64, ext: dmg }
+          - { os: macos-latest, platform: mac, arch: arm64, ext: dmg }
+          - { os: ubuntu-latest, platform: linux, arch: x64, ext: AppImage }
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: desktop/package-lock.json
+        
+    - name: Install dependencies
+      run: |
+        cd desktop
+        npm ci
+        
+    - name: Update version
+      run: |
+        cd desktop
+        npm version ${{ github.event.inputs.version }} --no-git-tag-version
+        
+    - name: Build and package
+      run: |
+        cd desktop
+        npm run build:${{ matrix.config.platform }} -- --${{ matrix.config.arch }}
+        
+    - name: Sign artifacts (Windows)
+      if: matrix.config.platform == 'win' && env.WINDOWS_CERTIFICATE != ''
+      env:
+        WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+        WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+      run: |
+        # Add Windows code signing here
+        echo "Signing Windows executable..."
+        
+    - name: Notarize artifacts (macOS)
+      if: matrix.config.platform == 'mac' && env.APPLE_ID != ''
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      run: |
+        # Add macOS notarization here
+        echo "Notarizing macOS application..."
+        
+    - name: Upload production artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: taskharvester-prod-${{ matrix.config.platform }}-${{ matrix.config.arch }}
+        path: desktop/dist/
+        retention-days: 90
+
+  # Create Production Release
+  create-production-release:
+    name: Create Production Release
+    needs: build-production
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Configure Git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: prod-artifacts/
+        
+    - name: Prepare release assets
+      run: |
+        mkdir -p release-assets
+        VERSION="${{ github.event.inputs.version }}"
+        
+        # Windows builds
+        for arch in x64 ia32; do
+          if [ -d "prod-artifacts/taskharvester-prod-win-$arch" ]; then
+            cd "prod-artifacts/taskharvester-prod-win-$arch"
+            
+            # Find installer and portable
+            if [ -f "*.exe" ] && [[ $(basename *.exe) == *"Setup"* ]]; then
+              cp *.exe "../../release-assets/TaskHarvester-${VERSION}-Windows-${arch}-Setup.exe"
+            fi
+            
+            # Create portable version
+            if [ -d "win-${arch}-unpacked" ]; then
+              cd "win-${arch}-unpacked"
+              zip -r "../../../release-assets/TaskHarvester-${VERSION}-Windows-${arch}-Portable.zip" ./*
+              cd ..
+            fi
+            cd ../..
+          fi
+        done
+        
+        # Mac builds
+        for arch in x64 arm64; do
+          if [ -d "prod-artifacts/taskharvester-prod-mac-$arch" ]; then
+            cd "prod-artifacts/taskharvester-prod-mac-$arch"
+            if [ -f "*.dmg" ]; then
+              cp *.dmg "../../release-assets/TaskHarvester-${VERSION}-macOS-${arch}.dmg"
+            fi
+            cd ../..
+          fi
+        done
+        
+        # Linux builds
+        if [ -d "prod-artifacts/taskharvester-prod-linux-x64" ]; then
+          cd "prod-artifacts/taskharvester-prod-linux-x64"
+          if [ -f "*.AppImage" ]; then
+            cp *.AppImage "../../release-assets/TaskHarvester-${VERSION}-Linux-x64.AppImage"
+          fi
+          cd ../..
+        fi
+        
+    - name: Generate comprehensive changelog
+      id: changelog
+      run: |
+        # Get all commits since last production release
+        LAST_PROD_TAG=$(git tag -l "v*" | grep -v "dev" | sort -V | tail -1)
+        
+        if [ -z "$LAST_PROD_TAG" ]; then
+          COMMITS=$(git log --pretty=format:"- %s (%h)" --since="30 days ago")
+        else
+          COMMITS=$(git log --pretty=format:"- %s (%h)" $LAST_PROD_TAG..HEAD)
+        fi
+        
+        # Count commits by type
+        FEATURES=$(echo "$COMMITS" | grep -c "feat\|✨\|🚀" || echo "0")
+        FIXES=$(echo "$COMMITS" | grep -c "fix\|🐛\|🔧" || echo "0")
+        IMPROVEMENTS=$(echo "$COMMITS" | grep -c "refactor\|perf\|📈\|♻️" || echo "0")
+        
+        {
+          echo "changelog<<EOF"
+          echo "## 🎉 TaskHarvester v${{ github.event.inputs.version }}"
+          echo ""
+          echo "${{ github.event.inputs.release_notes }}"
+          echo ""
+          echo "### 📊 Release Statistics"
+          echo "- ✨ **Features**: $FEATURES"
+          echo "- 🐛 **Bug Fixes**: $FIXES"
+          echo "- 📈 **Improvements**: $IMPROVEMENTS"
+          echo ""
+          echo "### 🚀 What's New"
+          echo "$COMMITS"
+          echo ""
+          echo "### 📋 System Requirements"
+          echo "- **Windows**: 10 or later (x64/x86)"
+          echo "- **macOS**: 10.15 or later (Intel/Apple Silicon)"
+          echo "- **Linux**: Ubuntu 18.04+ or equivalent"
+          echo ""
+          echo "### 🔧 Backend Requirements"
+          echo "- Python 3.11+"
+          echo "- Ollama with Llama 3.1 8B model"
+          echo "- Doppler CLI for environment configuration"
+          echo "- Microsoft Azure app registration"
+          echo ""
+          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$LAST_PROD_TAG...v${{ github.event.inputs.version }}"
+          echo "EOF"
+        } >> $GITHUB_OUTPUT
+        
+    - name: Create Release
+      uses: actions/create-release@v1
+      id: create_release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.event.inputs.version }}
+        release_name: TaskHarvester v${{ github.event.inputs.version }}
+        body: ${{ steps.changelog.outputs.changelog }}
+        draft: false
+        prerelease: false
+        
+    - name: Upload Release Assets
+      run: |
+        for file in release-assets/*; do
+          if [ -f "$file" ]; then
+            echo "Uploading $(basename $file)"
+            curl -X POST \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary @"$file" \
+              "${{ steps.create_release.outputs.upload_url }}?name=$(basename $file)"
+          fi
+        done
+        
+    - name: Update version in repo
+      run: |
+        cd desktop
+        npm version ${{ github.event.inputs.version }} --no-git-tag-version
+        git add package.json
+        git commit -m "🔖 Release v${{ github.event.inputs.version }}"
+        git tag v${{ github.event.inputs.version }}
+        git push origin main --tags
+
+  # Post-release Tasks
+  post-release:
+    name: Post-release Tasks
+    needs: create-production-release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Update documentation
+      run: |
+        echo "📚 Updating documentation for v${{ github.event.inputs.version }}"
+        # Add documentation update logic here
+        
+    - name: Create GitHub issue for next version
+      if: github.event.inputs.is_major_release == 'true'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `🎯 Plan next major release after v${{ github.event.inputs.version }}`,
+            body: `This issue tracks planning for the next major release following v${{ github.event.inputs.version }}.
+            
+            ## Planning Checklist
+            - [ ] Define major features and goals
+            - [ ] Create feature roadmap
+            - [ ] Identify breaking changes
+            - [ ] Plan migration guide
+            - [ ] Set tentative release timeline
+            
+            Created automatically after production release.`,
+            labels: ['enhancement', 'planning', 'major-release']
+          })
+          
+    - name: Notify team
+      run: |
+        echo "🎉 Production release v${{ github.event.inputs.version }} completed successfully!"
+        echo "Release URL: https://github.com/${{ github.repository }}/releases/tag/v${{ github.event.inputs.version }}"
